@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import roles from "../db/roles";
+import roles from "../config/roles";
 
 const grantAccess = (action: string, resource: string) => {
    return async (req: any, res: Response, next: NextFunction) => {
