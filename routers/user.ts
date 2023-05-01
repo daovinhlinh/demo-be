@@ -15,7 +15,6 @@ router.post("/register", async (req: Request, res: Response) => {
     }
 
     const user = new User({ ...req.body, role: User.ROLES.USER });
-    await user.save();
     const token = await user.generateAuthToken();
     res.status(201).send({ user, token });
   } catch (error) {
@@ -36,13 +35,13 @@ router.post("/login", async (req: Request, res: Response) => {
     const token = await user.generateAuthToken();
     res.send({ user, token });
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).send({
+      error: "Login failed! Check authentication credentials",
+    });
   }
 });
 
 router.get("/me", auth, async (req: any, res: Response) => {
-  console.log(req.user);
-
   res.send(req.user);
 });
 
@@ -59,11 +58,17 @@ router.post("/update", async (req: Request, res: Response) => {
 
 router.post("/logout", auth, async (req: any, res: Response) => {
   try {
-    req.user.tokens = req.user.tokens.filter((token: any) => {
-      return token.token !== req.token;
-    });
+    // req.user.tokens = req.user.tokens.filter((token: any) => {
+    //   return token.token !== req.token;
+    // });
+
+    req.user.token = undefined;
+
+
     await req.user.save();
-    res.send();
+    res.send({
+      message: "Logout successfully",
+    });
   } catch (error) {
     res.status(500).send(error);
   }
@@ -79,22 +84,28 @@ router.post("/logoutall", auth, async (req: any, res: Response) => {
   }
 });
 
-router.get('/', auth, userController.grantAccess('readAny', 'profile'), async (req: Request, res: Response) => {
-  const users = await User.find();
-  res.send(users);
-})
-
 router.get("/:userId", auth, async (req: Request, res: Response) => {
   const userId = req.params.userId;
-  console.log(userId);
-
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(404).send({ error: "User not found" });
+  if (userId.match(/^[0-9a-fA-F]{24}$/)) {
+    // Yes, it's a valid ObjectId, proceed with `findById` call.
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send({ error: "User not found" });
+    }
+    return res.status(200).json({
+      user: user,
+    })
   }
-  res.status(200).json({
-    user: user,
+
+  return res.status(400).send({
+    error: "Invalid user id"
   })
+
+})
+
+router.get('/', auth, userController.grantAccess('readOwn', 'profile'), async (req: Request, res: Response) => {
+  const users = await User.find();
+  res.send(users);
 })
 
 module.exports = router;

@@ -4,10 +4,7 @@ import roles from "../config/roles";
 const grantAccess = (action: string, resource: string) => {
    return async (req: any, res: Response, next: NextFunction) => {
       try {
-         console.log(req.user);
-
-         const permission = roles.can(req.body.role)[action](resource);
-         console.log(permission);
+         const permission = roles.can(req.user.role)[action](resource);
 
          if (!permission.granted) {
             return res.status(401).json({

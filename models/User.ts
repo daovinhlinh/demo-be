@@ -32,15 +32,19 @@ const userSchema = mongoose.Schema({
     required: true,
     minLength: 7,
   },
-  tokens: [
-    //save multiple tokens for login multiple devices
-    {
-      token: {
-        type: String,
-        required: true,
-      },
-    },
-  ],
+  // tokens: [
+  //   //save multiple tokens for login multiple devices
+  //   {
+  //     token: {
+  //       type: String,
+  //       required: true,
+  //     },
+  //   },
+  // ],
+  token: {
+    type: String,
+    // required: true
+  },
   role: {
     type: String,
     default: ROLES.USER,
@@ -65,7 +69,7 @@ userSchema.methods.generateAuthToken = async function () {
   const user = this;
   const token = jwt.sign({ _id: user._id }, process.env.JWT_KEY);
   console.log(token);
-  user.tokens = user.tokens.concat({ token });
+  user.token = token;
   await user.save();
   return token;
 };
