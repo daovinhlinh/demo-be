@@ -7,52 +7,59 @@ const jwt = require("jsonwebtoken");
 
 const ROLES = {
   ADMIN: "admin",
+  LECTURER: "lecturer",
   USER: "user",
-}
+};
 
-const userSchema = mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-    validate: (value: string) => {
-      if (!validator.isEmail(value)) {
-        throw new Error("Invalid Email address");
-      }
+const userSchema = mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      validate: (value: string) => {
+        if (!validator.isEmail(value)) {
+          throw new Error("Invalid Email address");
+        }
+      },
+    },
+    password: {
+      type: String,
+      required: true,
+      minLength: 7,
+    },
+    // tokens: [
+    //   //save multiple tokens for login multiple devices
+    //   {
+    //     token: {
+    //       type: String,
+    //       required: true,
+    //     },
+    //   },
+    // ],
+    token: {
+      type: String,
+      // required: true
+    },
+    classes: {
+      type: Object
+    },
+    role: {
+      type: String,
+      default: ROLES.USER,
+      enum: [ROLES.ADMIN, ROLES.USER, ROLES.LECTURER],
     },
   },
-  password: {
-    type: String,
-    required: true,
-    minLength: 7,
-  },
-  // tokens: [
-  //   //save multiple tokens for login multiple devices
-  //   {
-  //     token: {
-  //       type: String,
-  //       required: true,
-  //     },
-  //   },
-  // ],
-  token: {
-    type: String,
-    // required: true
-  },
-  role: {
-    type: String,
-    default: ROLES.USER,
-    enum: [ROLES.ADMIN, ROLES.USER],
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true,
-});
+);
 
 userSchema.pre("save", async function (next: NextFunction) {
   // Hash the password before saving the user model

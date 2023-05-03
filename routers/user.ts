@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 const express = require("express");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
-const userController = require('../controllers/user.controller');
+const userController = require("../controllers/user.controller");
 const router = express.Router();
 
 router.post("/register", async (req: Request, res: Response) => {
@@ -14,7 +14,10 @@ router.post("/register", async (req: Request, res: Response) => {
       return res.status(400).send("User already registered");
     }
 
-    const user = new User({ ...req.body, role: User.ROLES.USER });
+    const user = new User({
+      ...req.body,
+      role: req.body.role ? req.body.role : User.ROLES.USER,
+    });
     const token = await user.generateAuthToken();
     res.status(201).send({ user, token });
   } catch (error) {
@@ -48,13 +51,14 @@ router.get("/me", auth, async (req: any, res: Response) => {
 router.post("/update", async (req: Request, res: Response) => {
   const update = req.body;
 
-  const updateUser = await User.findOneAndUpdate({ _id: req.body.id }, update, { new: true });
+  const updateUser = await User.findOneAndUpdate({ _id: req.body.id }, update, {
+    new: true,
+  });
   if (!updateUser) {
     res.status(404).send("No user found");
   }
   res.status(200).send(updateUser);
-})
-
+});
 
 router.post("/logout", auth, async (req: any, res: Response) => {
   try {
@@ -63,7 +67,6 @@ router.post("/logout", auth, async (req: any, res: Response) => {
     // });
 
     req.user.token = undefined;
-
 
     await req.user.save();
     res.send({
@@ -94,18 +97,22 @@ router.get("/:userId", auth, async (req: Request, res: Response) => {
     }
     return res.status(200).json({
       user: user,
-    })
+    });
   }
 
   return res.status(400).send({
-    error: "Invalid user id"
-  })
+    error: "Invalid user id",
+  });
+});
 
-})
-
-router.get('/', auth, userController.grantAccess('readOwn', 'profile'), async (req: Request, res: Response) => {
-  const users = await User.find();
-  res.send(users);
-})
+router.get(
+  "/",
+  auth,
+  userController.grantAccess("readOwn", "profile"),
+  async (req: Request, res: Response) => {
+    const users = await User.find();
+    res.send(users);
+  }
+);
 
 module.exports = router;

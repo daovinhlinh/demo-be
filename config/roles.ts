@@ -9,7 +9,19 @@ const roles = () => {
 
    ac.grant('admin')
       .extend('user')
-      .readAny('profile');
+      .readAny('profile')
+      .updateAny('profile')
+      .deleteAny('profile')
+      .readAny('class')
+      .updateAny('class')
+      .deleteAny('class')
+      .createAny('class')
+      ;
+
+   ac.grant('lecturer')
+      .extend('user')
+      .readOwn('class')
+      .updateOwn('class');
 };
 
 roles()
