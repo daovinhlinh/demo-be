@@ -113,7 +113,26 @@ router.get('/schedule', auth, async (req: any, res: Response) => {
 
 router.post('/update', auth, userController.grantAccess("updateOwn", 'class'), async (req: any, res: Response) => {
   const emailList = req.body.data.students.map((student: any) => student.email);
-  const updateData = req.body.data
+  const updateData = req.body.data;
+
+  const classData = await Class.findOne({
+    _id: req.body.id
+  });
+
+  if (!classData) {
+    return res.status(401).send({
+      message: "Class not found",
+    });
+  }
+  console.log(classData);
+
+  // Get remove sttudent 
+  const removeStudent = classData.students.length > 0 ? classData.students.filter((student: any) => !emailList.includes(student.email)) : [];
+  console.log(emailList);
+
+  console.log('removeStudent', removeStudent);
+
+  //handle việc update lỗi 1 trong các bước thì rollback lại
   try {
     Promise.all([
       await User.updateMany(
@@ -122,13 +141,14 @@ router.post('/update', auth, userController.grantAccess("updateOwn", 'class'), a
         },
         {
           $set: {
-            [`classes.${updateData.classId}`]: {
+            classes: {
+              id: req.body.id,
               name: updateData.name,
               semester: updateData.semester,
               schedules: updateData.schedules,
             }
 
-          }
+          },
         }
       ),
       await Class.updateOne(
@@ -137,7 +157,25 @@ router.post('/update', auth, userController.grantAccess("updateOwn", 'class'), a
           ...(req.user.role === User.ROLES.LECTURER && { "lecturer.email": req.user.email })
         },
         {
-          $set: updateData
+          $set: updateData,
+        }
+      ),
+      await User.updateMany(
+        {
+          email: {
+            $in: removeStudent.map((student: any) => student.email)
+          },
+        },
+        {
+          $pull: {
+            classes: {
+              id: req.body.id
+            }
+          },
+        },
+        {
+          upsert: false,
+          multi: true
         }
       )
 

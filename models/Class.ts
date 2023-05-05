@@ -121,7 +121,8 @@ classSchema.pre("save", async function (next: NextFunction) {
     },
     {
       $set: {
-        [`classes.${classData.classId}`]: {
+        classes: {
+          id: classData._id,
           name: classData.name,
           semester: classData.semester,
           schedules: classData.schedules,
