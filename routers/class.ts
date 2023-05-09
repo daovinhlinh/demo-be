@@ -1,25 +1,19 @@
 import { Request, Response } from "express";
+import { ClientSession } from "mongoose";
 
+const mongoose = require("mongoose");
 const express = require("express");
 const Class = require("../models/Class");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 const userController = require("../controllers/user.controller");
+const classController = require("../controllers/class.controller");
 
 const router = express.Router();
 
-router.get("/list", auth, async (req: any, res: Response) => {
-  try {
-    const classes = await Class.find({
-      "lecturer.email": req.user.email,
-    });
-    res.status(200).send(classes);
-  } catch (error) {
-    return res.status(401).send({
-      message: "Cannot get list class",
-    });
-  }
-});
+
+
+router.get("/list", auth, classController.getClassList);
 
 router.post("/add", auth, userController.grantAccess('createAny', 'class'), async (req: Request, res: Response) => {
   try {
@@ -112,9 +106,10 @@ router.get('/schedule', auth, async (req: any, res: Response) => {
 });
 
 router.post('/update', auth, userController.grantAccess("updateOwn", 'class'), async (req: any, res: Response) => {
+  const session: ClientSession = await mongoose.startSession();
+
   const emailList = req.body.data.students.map((student: any) => student.email);
   const updateData = req.body.data;
-
   const classData = await Class.findOne({
     _id: req.body.id
   });
@@ -126,71 +121,102 @@ router.post('/update', auth, userController.grantAccess("updateOwn", 'class'), a
   }
   console.log(classData);
 
-  // Get remove sttudent 
-  const removeStudent = classData.students.length > 0 ? classData.students.filter((student: any) => !emailList.includes(student.email)) : [];
-  console.log(emailList);
+  let tempStudent: string[] = []; //Contain new and remove student
+  let updateStudent: string[] = [];
+  classData.students.map((student: any) => {
+    if (emailList.includes(student.email)) {
+      updateStudent.push(student.email);
+    } else {
+      tempStudent.push(student.email);
+    }
+  })
 
-  console.log('removeStudent', removeStudent);
+  let addStudent = emailList.filter((email: string) => !updateStudent.includes(email));
+  let removeStudent = classData.students.filter((student: any) => tempStudent.includes(student.email));
+
+  console.log(addStudent);
+  console.log(removeStudent);
+  console.log(updateStudent);
 
   //handle việc update lỗi 1 trong các bước thì rollback lại
-  try {
-    Promise.all([
-      await User.updateMany(
-        {
-          email: { $in: emailList },
+  session.startTransaction();
+  Promise.all([
+    addStudent.length > 0 &&
+    await User.updateMany(
+      {
+        email: { $in: addStudent },
+      },
+      {
+        $set: {
+          classes: {
+            id: req.body.id,
+            name: updateData.name,
+            semester: updateData.semester,
+            schedules: updateData.schedules,
+          }
+
         },
-        {
-          $set: {
-            classes: {
-              id: req.body.id,
-              name: updateData.name,
-              semester: updateData.semester,
-              schedules: updateData.schedules,
-            }
-
-          },
-        }
-      ),
-      await Class.updateOne(
-        {
-          _id: req.body.id,
-          ...(req.user.role === User.ROLES.LECTURER && { "lecturer.email": req.user.email })
+      }
+    ),
+    //update student
+    updateStudent.length > 0 &&
+    await User.updateMany(
+      {
+        email: { $in: updateStudent },
+        "classes.id": req.body.id
+      },
+      {
+        classes: {
+          id: req.body.id,
+          name: updateData.name,
+          semester: updateData.semester,
+          schedules: updateData.schedules,
         },
-        {
-          $set: updateData,
-        }
-      ),
-      await User.updateMany(
-        {
-          email: {
-            $in: removeStudent.map((student: any) => student.email)
-          },
+      }
+    ),
+    removeStudent.length > 0 &&
+    await User.updateMany(
+      {
+        email: {
+          $in:
+            // removeStudent.map((student: any) => student.email)
+            removeStudent
         },
-        {
-          $pull: {
-            classes: {
-              id: req.body.id
-            }
-          },
+      },
+      {
+        $pull: {
+          classes: {
+            id: req.body.id
+          }
         },
-        {
-          upsert: false,
-          multi: true
-        }
-      )
+      },
+      {
+        upsert: false,
+        multi: true
+      }
+    ),
+    await Class.updateOne(
+      {
+        _id: req.body.id,
+        ...(req.user.role === User.ROLES.LECTURER && { "lecturer.email": req.user.email })
+      },
+      {
+        $set: updateData,
+      }
+    ),
 
-    ]).then(() => {
-      return res.status(200).send("Update class successfully");
-    })
-
-
-  } catch (err) {
-    console.log(err);
-
+  ]).then(() => {
+    session.commitTransaction();
+    return res.status(200).send("Update class successfully");
+  }).catch(err => {
+    console.log('errror', err);
+    session.abortTransaction();
     return res.status(401).send({
       message: "Cannot update class",
     });
-  }
+  }).finally(() => {
+    session.endSession();
+  })
 })
 
 module.exports = router;

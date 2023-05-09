@@ -28,15 +28,16 @@ router.post("/register", async (req: Request, res: Response) => {
 router.post("/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findByCredentials(email, password);
+    let user = await User.findByCredentials(email, password);
     if (!user) {
       return res
         .status(401)
         .send({ error: "Login failed! Check authentication credentials" });
     }
 
-    const token = await user.generateAuthToken();
-    res.send({ user, token });
+    await user.generateAuthToken();
+
+    res.send(user);
   } catch (error) {
     res.status(400).send({
       error: "Login failed! Check authentication credentials",
