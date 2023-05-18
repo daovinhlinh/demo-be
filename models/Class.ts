@@ -88,20 +88,23 @@ const classSchema = mongoose.Schema(
       },
     ],
     students: [
+      // {
+      //   name: {
+      //     type: String,
+      //     required: true,
+      //   },
+      //   email: {
+      //     type: String,
+      //     required: true,
+      //   },
+      //   idNumber: {
+      //     type: String,
+      //     required: true,
+      //   }
+      // }
       {
-        name: {
-          type: String,
-          required: true,
-        },
-        email: {
-          type: String,
-          required: true,
-        },
-        idNumber: {
-          type: String,
-          required: true,
-        }
-      }
+        type: mongoose.Schema.Types.ObjectId
+      },
     ]
   },
   {

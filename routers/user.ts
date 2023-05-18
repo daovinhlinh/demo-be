@@ -14,6 +14,21 @@ router.post("/register", async (req: Request, res: Response) => {
       return res.status(400).send("User already registered");
     }
 
+    if (req.body.role === User.ROLES.USER) {
+      if (!req.body.studentId) {
+        return res.status(400).send("Missing studentId");
+      }
+
+      const isExistedStudentId = await User.findOne({
+        studentId: req.body.studentId,
+      });
+      if (isExistedStudentId) {
+        return res.status(400).send("StudentId already registered");
+      }
+    } else if (req.body.studentId) {
+      return res.status(400).send("StudentId is only for user");
+    }
+
     const user = new User({
       ...req.body,
       role: req.body.role ? req.body.role : User.ROLES.USER,
@@ -49,10 +64,10 @@ router.get("/me", auth, async (req: any, res: Response) => {
   res.send(req.user);
 });
 
-router.post("/update", async (req: Request, res: Response) => {
+router.post("/update", auth, async (req: any, res: Response) => {
   const update = req.body;
 
-  const updateUser = await User.findOneAndUpdate({ _id: req.body.id }, update, {
+  const updateUser = await User.findOneAndUpdate({ _id: req.user._id }, update, {
     new: true,
   });
   if (!updateUser) {

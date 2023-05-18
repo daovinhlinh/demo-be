@@ -11,9 +11,9 @@ const classController = require("../controllers/class.controller");
 
 const router = express.Router();
 
-
-
 router.get("/list", auth, classController.getClassList);
+
+router.get("/detail/:classId", auth, classController.getClassDetail);
 
 router.post("/add", auth, userController.grantAccess('createAny', 'class'), async (req: Request, res: Response) => {
   try {
@@ -29,18 +29,21 @@ router.post("/add", auth, userController.grantAccess('createAny', 'class'), asyn
     if (!req.body.students || req.body.students.length === 0) {
       return res.status(400).send(`Missing students`);
     } else {
-      const emailList = req.body.students.map((student: any) => student.email);
+      const studentIdList = req.body.students.map((student: any) => student.studentId);
 
-      const students = await User.find({ email: { $in: emailList }, role: User.ROLES.USER }, { _id: 0 });
+      const students = await User.find({ studentId: { $in: studentIdList }, role: User.ROLES.USER }, { _id: 0 });
       console.log(students);
 
-      if (students.length !== emailList.length) {
-        const notFoundStudents = emailList.filter((email: string) => !students.includes(email))
+      if (students.length !== studentIdList.length) {
+        const existStudent = students.map((student: any) => student.studentId);
+        const notFoundStudents = studentIdList.filter((id: string) => !existStudent.includes(id))
 
-        return res.status(400).send({
-          message: 'Some students not found',
-          data: notFoundStudents
-        });
+        User.insertMany(notFoundStudents.map((studentId: string) => ({ studentId, role: User.ROLES.USER })));
+
+        // return res.status(400).send({
+        //   message: 'Some students not found',
+        //   data: notFoundStudents
+        // });
       }
       // else {
       //   const updateResult = await User.updateMany(
@@ -94,9 +97,14 @@ router.post("/delete", auth, userController.grantAccess("updateOwn", 'class'), a
 
 router.get('/schedule', auth, async (req: any, res: Response) => {
   try {
-    const classes = await Class.find({
-      "lecturer.email": req.user.email,
-    });
+    const classes = await Class.find([null],
+      {
+        a: 1
+      }
+    );
+
+    console.log(classes);
+
     res.status(200).send(classes);
   } catch (error) {
     return res.status(401).send({

@@ -55,6 +55,9 @@ const userSchema = mongoose.Schema(
       default: ROLES.USER,
       enum: [ROLES.ADMIN, ROLES.USER, ROLES.LECTURER],
     },
+    studentId: {
+      type: String
+    }
   },
   {
     timestamps: true,

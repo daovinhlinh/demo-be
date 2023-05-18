@@ -15,4 +15,31 @@ const getClassList = async (req: any, res: Response, next: NextFunction) => {
   }
 }
 
-module.exports = { getClassList };
+const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const classDetail = await Class.aggregate([{
+      $match: {
+        classId: req.params.classId,
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "students",
+        foreignField: "_id",
+        as: "students",
+      },
+    },
+    {
+      $unwind: {
+        path: "$students",
+        preserveNullAndEmptyArrays: true,
+      },
+    }]);
+    res.status(200).send(classDetail);
+  } catch (error) {
+
+  }
+}
+
+module.exports = { getClassList, getClassDetail };
