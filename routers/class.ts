@@ -29,22 +29,31 @@ router.post("/add", auth, userController.grantAccess('createAny', 'class'), asyn
     if (!req.body.students || req.body.students.length === 0) {
       return res.status(400).send(`Missing students`);
     } else {
-      const studentIdList = req.body.students.map((student: any) => student.studentId);
+      // const studentIdList = req.body.students.map((student: any) => student.studentId);
+      // console.log('students', req.body.students);
 
-      const students = await User.find({ studentId: { $in: studentIdList }, role: User.ROLES.USER }, { _id: 0 });
-      console.log(students);
+      const students = await User.find({ studentId: { $in: req.body.students }, role: User.ROLES.USER }, { _id: 1, studentId: 1 });
 
-      if (students.length !== studentIdList.length) {
+      if (students.length !== req.body.students.length) {
         const existStudent = students.map((student: any) => student.studentId);
-        const notFoundStudents = studentIdList.filter((id: string) => !existStudent.includes(id))
+        const notFoundStudents = req.body.students.filter((id: string) => !existStudent.includes(id))
 
-        User.insertMany(notFoundStudents.map((studentId: string) => ({ studentId, role: User.ROLES.USER })));
+        // User.insertMany(notFoundStudents.map((studentId: string) => ({ studentId, role: User.ROLES.USER })));
 
-        // return res.status(400).send({
-        //   message: 'Some students not found',
-        //   data: notFoundStudents
-        // });
+        return res.status(400).send({
+          message: 'Some students not found',
+          data: notFoundStudents
+        });
       }
+
+      req.body.students = students.map((student: any) => ({
+        id: student._id,
+        presentCount: 1,
+        absentRequestCount: 0,
+        lateCount: 0,
+      }));
+
+
       // else {
       //   const updateResult = await User.updateMany(
       //     {

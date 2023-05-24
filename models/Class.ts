@@ -56,54 +56,38 @@ const classSchema = mongoose.Schema(
           required: true
         },
         location: {
-          name: {
-            type: String,
-            required: true,
-          },
-          wifi: {
-            type: Object,
-            required: true,
-          },
+          type: String,
+          required: true
         },
-        time: {
-          start: {
-            type: String,
-            required: true,
-          },
-          end: {
-            type: String,
-            required: true,
-          },
+        startTime: {
+          type: String,
+          required: true,
         },
-        attendanceTime: {
-          start: {
-            type: String,
-            required: true,
-          },
-          end: {
-            type: String,
-            required: true,
-          },
+        endTime: {
+          type: String,
+          required: true,
         },
       },
     ],
     students: [
-      // {
-      //   name: {
-      //     type: String,
-      //     required: true,
-      //   },
-      //   email: {
-      //     type: String,
-      //     required: true,
-      //   },
-      //   idNumber: {
-      //     type: String,
-      //     required: true,
-      //   }
-      // }
       {
-        type: mongoose.Schema.Types.ObjectId
+        id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        presentCount: {
+          type: Number,
+          default: 0,
+        },
+        absentRequestCount: {
+          type: Number,
+          default: 0,
+        },
+        lateCount: {
+          type: Number,
+          default: 0,
+        },
       },
     ]
   },
@@ -115,27 +99,40 @@ const classSchema = mongoose.Schema(
 classSchema.pre("save", async function (next: NextFunction) {
   const classData = this;
 
-  const studentList = classData.students.map((student: any) => student.email);
-  console.log(studentList);
+  // const studentList = classData.students.map((student: any) => student.id);
 
-  await User.updateMany(
-    {
-      email: { $in: studentList },
-    },
-    {
-      $set: {
-        classes: {
+  for (const student of classData.students) {
+    const studentData = await User.findById(student.id);
+    // console.log('studentdata', studentData);
+    console.log('student', student);
+
+    if (studentData) {
+      const enrollClasses = studentData.classes;
+
+      const existingClassIndex = enrollClasses.findIndex((item: any) => item.id === classData._id);
+
+      if (existingClassIndex !== -1) {
+        enrollClasses[existingClassIndex].presentCount = student.presentCount;
+        enrollClasses[existingClassIndex].absentRequestCount = student.absentRequestCount;
+        enrollClasses[existingClassIndex].lateCount = student.lateCount;
+      } else {
+        enrollClasses.push({
           id: classData._id,
-          name: classData.name,
-          semester: classData.semester,
-          schedules: classData.schedules,
-        }
-
+          presentCount: student.presentCount,
+          absentRequestCount: student.absentRequestCount,
+          lateCount: student.lateCount,
+        });
       }
+      console.log('enrollClasses', enrollClasses);
+
+      await User.updateOne(
+        { _id: student.id },
+        { $set: { classes: enrollClasses } }
+      );
     }
-  )
+  }
   next();
-});
+})
 
 const Class = mongoose.model("Class", classSchema);
 module.exports = Class;

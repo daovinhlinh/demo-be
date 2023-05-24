@@ -67,9 +67,13 @@ router.get("/me", auth, async (req: any, res: Response) => {
 router.post("/update", auth, async (req: any, res: Response) => {
   const update = req.body;
 
-  const updateUser = await User.findOneAndUpdate({ _id: req.user._id }, update, {
-    new: true,
-  });
+  const updateUser = await User.findOneAndUpdate(
+    { _id: req.user._id },
+    update,
+    {
+      new: true,
+    }
+  );
   if (!updateUser) {
     res.status(404).send("No user found");
   }
@@ -118,6 +122,23 @@ router.get("/:userId", auth, async (req: Request, res: Response) => {
 
   return res.status(400).send({
     error: "Invalid user id",
+  });
+});
+
+router.post("/checkLecturer", auth, async (req: any, res: Response) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    return res.status(404).send({ error: "User not found" });
+  }
+
+  if (user.role === User.ROLES.LECTURER) {
+    return res.status(200).send({
+      isLecturer: true,
+    });
+  }
+
+  return res.status(200).send({
+    isLecturer: false,
   });
 });
 

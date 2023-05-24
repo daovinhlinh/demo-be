@@ -3,6 +3,7 @@ import { uploads } from "../config/multer";
 
 const express = require("express");
 const Image = require("../models/Image");
+const Wifi = require("../models/Wifi");
 const auth = require("../middleware/auth");
 const userController = require('../controllers/user.controller');
 const csv = require('csvtojson')
@@ -26,7 +27,19 @@ router.post("/", uploads.single('file'), async (req: Request, res: Response, nex
          data: result
       });
    })
-
 });
+
+router.post('/wifi', async (req: Request, res: Response) => {
+   console.log(req.body);
+
+   const wifiData = new Wifi(req.body);
+   wifiData.save()
+      .then((result: any) => {
+         res.status(201).send(result);
+      }
+      ).catch((error: any) => {
+         res.status(401).send(error);
+      })
+})
 
 module.exports = router;
