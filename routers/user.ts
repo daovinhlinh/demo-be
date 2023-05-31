@@ -128,7 +128,7 @@ router.get("/:userId", auth, async (req: Request, res: Response) => {
 router.post("/checkLecturer", auth, async (req: any, res: Response) => {
   const user = await User.findOne({ email: req.body.email });
   if (!user) {
-    return res.status(404).send({ error: "User not found" });
+    return res.status(400).send({ error: "User not found" });
   }
 
   if (user.role === User.ROLES.LECTURER) {

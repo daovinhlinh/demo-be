@@ -36,31 +36,50 @@ const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
           from: "users",
           localField: "students.id",
           foreignField: "_id",
-          as: "students",
+          as: "temp_students",
         },
       },
-      // {
-      //   $unwind: {
-      //     path: "$students",
-      //     preserveNullAndEmptyArrays: true,
-      //   },
-      // },
-      // {
-      //   $unwind: "$students"
-      // },
-      // {
-      //   $project: {
-      //     _id: 0,
-      //     presentCount: 1,
-      //     absentRequestCount: 1,
-      //     lateCount: 1,
-      //   }
-      // },
+      {
+        $project: {
+          _id: 1,
+          classId: 1,
+          name: 1,
+          lecturer: 1,
+          schedules: 1,
+          semester: 1,
+          students: {
+            $map: {
+              input: "$temp_students",
+              as: "student",
+              in: {
+                $mergeObjects: [
+                  {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: "$students",
+                          as: "s",
+                          cond: { $eq: ["$$s.id", "$$student._id"] }
+                        }
+                      },
+                      0
+                    ]
+                  },
+                  "$$student"
+                ]
+              }
+            }
+          }
+        }
+      }
     ]);
     console.log("classDetail", classDetail);
 
     res.status(200).send(classDetail[0]);
-  } catch (error) { }
+  } catch (error) {
+    console.log(error);
+
+  }
 };
 
 module.exports = { getClassList, getClassDetail };
