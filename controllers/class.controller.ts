@@ -15,6 +15,8 @@ const getClassList = async (req: any, res: Response) => {
         "lecturer.email": req.user.email,
       });
       res.status(200).send(classes);
+    } else {
+      res.status(200).send([])
     }
   } catch (error) {
     return res.status(401).send({

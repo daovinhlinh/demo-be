@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ClientSession } from "mongoose";
+import { uploads } from "../config/multer";
 
 const mongoose = require("mongoose");
 const express = require("express");
@@ -8,6 +9,7 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const userController = require("../controllers/user.controller");
 const classController = require("../controllers/class.controller");
+const csv = require('csvtojson')
 
 const router = express.Router();
 
@@ -15,16 +17,24 @@ router.get("/list", auth, classController.getClassList);
 
 router.get("/detail/:classId", auth, classController.getClassDetail);
 
-router.post("/add", auth, userController.grantAccess('createAny', 'class'), async (req: Request, res: Response) => {
+router.post("/add", auth, uploads.single('students'), userController.grantAccess('createAny', 'class'), async (req: Request, res: Response) => {
+  const file: any = req.file;
+  const fileResult = await csv().fromFile(file.path)
+  req.body.students = fileResult.map((item: any) => item.student_id)
+
   try {
     const isExisted = await Class.findOne({ classId: req.body.classId });
     if (isExisted) {
       return res.status(400).send("Class already registered");
     }
-    const lecturer = await User.findOne({ email: req.body.lecturer.email, role: User.ROLES.LECTURER });
+    const lecturer = await User.findOne({ email: req.body.lecturer, role: User.ROLES.LECTURER });
     if (!lecturer) {
       return res.status(400).send(`Lecturer ${req.body.lecturer.email} not found`);
     }
+    req.body.lecturer = {
+      name: lecturer.name,
+      email: lecturer.email,
+    };
 
     if (!req.body.students || req.body.students.length === 0) {
       return res.status(400).send(`Missing students`);
@@ -46,32 +56,13 @@ router.post("/add", auth, userController.grantAccess('createAny', 'class'), asyn
         });
       }
 
-      req.body.students = students.map((student: any) => ({
-        id: student._id,
-        presentCount: 1,
-        absentRequestCount: 0,
-        lateCount: 0,
-      }));
+      // req.body.students = students.map((student: any) => ({
+      //   id: student._id,
+      //   presentCount: 1,
+      //   absentRequestCount: 0,
+      //   lateCount: 0,
+      // }));
 
-
-      // else {
-      //   const updateResult = await User.updateMany(
-      //     {
-      //       email: { $in: emailList },
-      //     },
-      //     {
-      //       $set: {
-      //         [`classes.${req.body.classId}`]: {
-      //           name: req.body.name,
-      //           semester: req.body.semester,
-      //           schedules: req.body.schedules,
-      //         }
-      //       }
-      //     }
-      //   )
-      //   console.log('updateResult', updateResult);
-
-      // }
 
       const newClass = new Class(req.body);
       await newClass.save();
