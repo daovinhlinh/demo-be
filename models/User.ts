@@ -11,6 +11,16 @@ const ROLES = {
   USER: "user",
 };
 
+export interface IUser {
+  _id: string;
+  name: string;
+  email: string;
+  password: string;
+  classes: Array<any>;
+  role: string;
+  studentId: string;
+}
+
 const userSchema = mongoose.Schema(
   {
     name: {

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ClientSession } from "mongoose";
 import { uploads } from "../config/multer";
+import { IAuth } from "../middleware/auth";
 
 const mongoose = require("mongoose");
 const express = require("express");
@@ -20,8 +21,9 @@ router.get("/detail/:classId", auth, classController.getClassDetail);
 router.post("/add", auth, uploads.single('students'), userController.grantAccess('createAny', 'class'), async (req: Request, res: Response) => {
   const file: any = req.file;
   const fileResult = await csv().fromFile(file.path)
-  req.body.students = fileResult.map((item: any) => item.student_id)
+  const studentIdList = fileResult.map((item: any) => item.id)
 
+  req.body.schedules = JSON.parse(req.body.schedules)
   try {
     const isExisted = await Class.findOne({ classId: req.body.classId });
     if (isExisted) {
@@ -31,24 +33,19 @@ router.post("/add", auth, uploads.single('students'), userController.grantAccess
     if (!lecturer) {
       return res.status(400).send(`Lecturer ${req.body.lecturer.email} not found`);
     }
+
     req.body.lecturer = {
       name: lecturer.name,
       email: lecturer.email,
     };
 
-    if (!req.body.students || req.body.students.length === 0) {
+    if (!studentIdList || studentIdList.length === 0) {
       return res.status(400).send(`Missing students`);
     } else {
-      // const studentIdList = req.body.students.map((student: any) => student.studentId);
-      // console.log('students', req.body.students);
-
-      const students = await User.find({ studentId: { $in: req.body.students }, role: User.ROLES.USER }, { _id: 1, studentId: 1 });
-
-      if (students.length !== req.body.students.length) {
+      const students = await User.find({ studentId: { $in: studentIdList }, role: User.ROLES.USER }, { _id: 1, studentId: 1 });
+      if (students.length !== studentIdList.length) {
         const existStudent = students.map((student: any) => student.studentId);
-        const notFoundStudents = req.body.students.filter((id: string) => !existStudent.includes(id))
-
-        // User.insertMany(notFoundStudents.map((studentId: string) => ({ studentId, role: User.ROLES.USER })));
+        const notFoundStudents = studentIdList.filter((id: string) => !existStudent.includes(id))
 
         return res.status(400).send({
           message: 'Some students not found',
@@ -56,21 +53,22 @@ router.post("/add", auth, uploads.single('students'), userController.grantAccess
         });
       }
 
-      // req.body.students = students.map((student: any) => ({
-      //   id: student._id,
-      //   presentCount: 1,
-      //   absentRequestCount: 0,
-      //   lateCount: 0,
-      // }));
+      req.body.students = fileResult.map((item: any) => {
+        const findStudent = students.find((student: any) => student.studentId === item.id);
+        console.log(findStudent);
 
-
+        return ({
+          ...item,
+          id: findStudent._id,
+        })
+      }
+      );
+      req.body.createdBy = (req as unknown as IAuth).user._id;
       const newClass = new Class(req.body);
       await newClass.save();
       res.status(201).send({ newClass });
     }
   } catch (error) {
-    console.log(error);
-
     return res.status(401).send(error);
   }
 });

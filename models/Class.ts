@@ -89,7 +89,10 @@ const classSchema = mongoose.Schema(
           default: 0,
         },
       },
-    ]
+    ],
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+    }
   },
   {
     timestamps: true,

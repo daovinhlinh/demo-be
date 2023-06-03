@@ -1,7 +1,13 @@
 import { NextFunction, Response } from "express";
+import { IUser } from "../models/User";
 
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+
+export interface IAuth {
+  token: string;
+  user: IUser;
+}
 
 const auth = async (req: any, res: Response, next: NextFunction) => {
   try {
