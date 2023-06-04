@@ -5,10 +5,10 @@ const User = require("../models/User");
 
 const getClassList = async (req: any, res: Response) => {
   try {
+    console.log(req.user);
+
     if (req.user.role === User.ROLES.USER) {
       const classes = await Class.find({ "students.id": req.user._id });
-      console.log("classes", classes);
-
       return res.status(200).send(classes);
     } else if (req.user.role === User.ROLES.LECTURER) {
       const classes = await Class.find({
@@ -16,7 +16,12 @@ const getClassList = async (req: any, res: Response) => {
       });
       res.status(200).send(classes);
     } else {
-      res.status(200).send([])
+      const classes = await Class.find({
+        "createdBy": req.user._id,
+      });
+      console.log(classes);
+
+      res.status(200).send(classes)
     }
   } catch (error) {
     return res.status(401).send({
@@ -49,6 +54,7 @@ const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
           lecturer: 1,
           schedules: 1,
           semester: 1,
+          note: 1,
           students: {
             $map: {
               input: "$temp_students",
@@ -75,8 +81,6 @@ const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
         }
       }
     ]);
-    console.log("classDetail", classDetail);
-
     res.status(200).send(classDetail[0]);
   } catch (error) {
     console.log(error);

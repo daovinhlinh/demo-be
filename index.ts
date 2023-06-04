@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
 import { uploads } from "./config/multer";
 import path from "path";
+import socketHandler from "./socket/socketHandler";
 
 const express = require("express");
 const dotenv = require("dotenv");
+const { Server } = require('socket.io')
+const { createServer } = require('http')
 dotenv.config();
 require("./config/db");
 
@@ -31,6 +34,14 @@ const classRouter = require("./routers/class");
 
 const app = express();
 const port = process.env.PORT;
+const httpServer = createServer(app)
+
+export const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+})
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -39,6 +50,7 @@ app.use("/user", userRouter);
 app.use("/image", imageRouter);
 app.use('/upload', uploadRouter)
 app.use('/class', classRouter)
+// app.use('/',)
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server");
@@ -47,3 +59,12 @@ app.get("/", (req: Request, res: Response) => {
 app.listen(port, () => {
   console.log(`[server]: Server is running at https://localhost:${port}`);
 });
+
+httpServer.listen(process.env.SOCKET_PORT, () => {
+  try {
+    console.log(`[server]: Socket is running at https://localhost:${process.env.SOCKET_PORT}`);
+    socketHandler(io);
+  } catch (e) {
+    console.log(e);
+  }
+})

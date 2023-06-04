@@ -66,7 +66,7 @@ router.post("/add", auth, uploads.single('students'), userController.grantAccess
       req.body.createdBy = (req as unknown as IAuth).user._id;
       const newClass = new Class(req.body);
       await newClass.save();
-      res.status(201).send({ newClass });
+      res.status(201).send({ success: true, newClass });
     }
   } catch (error) {
     return res.status(401).send(error);
