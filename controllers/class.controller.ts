@@ -5,8 +5,6 @@ const User = require("../models/User");
 
 const getClassList = async (req: any, res: Response) => {
   try {
-    console.log(req.user);
-
     if (req.user.role === User.ROLES.USER) {
       const classes = await Class.find({ "students.id": req.user._id });
       return res.status(200).send(classes);
@@ -17,11 +15,11 @@ const getClassList = async (req: any, res: Response) => {
       res.status(200).send(classes);
     } else {
       const classes = await Class.find({
-        "createdBy": req.user._id,
+        createdBy: req.user._id,
       });
       console.log(classes);
 
-      res.status(200).send(classes)
+      res.status(200).send(classes);
     }
   } catch (error) {
     return res.status(401).send({
@@ -67,24 +65,23 @@ const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
                         $filter: {
                           input: "$students",
                           as: "s",
-                          cond: { $eq: ["$$s.id", "$$student._id"] }
-                        }
+                          cond: { $eq: ["$$s.id", "$$student._id"] },
+                        },
                       },
-                      0
-                    ]
+                      0,
+                    ],
                   },
-                  "$$student"
-                ]
-              }
-            }
-          }
-        }
-      }
+                  "$$student",
+                ],
+              },
+            },
+          },
+        },
+      },
     ]);
     res.status(200).send(classDetail[0]);
   } catch (error) {
     console.log(error);
-
   }
 };
 
