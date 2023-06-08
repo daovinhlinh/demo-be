@@ -27,11 +27,11 @@ router.post("/add", auth, uploads.single('students'), userController.grantAccess
   try {
     const isExisted = await Class.findOne({ classId: req.body.classId });
     if (isExisted) {
-      return res.status(400).send("Class already registered");
+      return res.status(400).send({ error: "Class already registered" });
     }
     const lecturer = await User.findOne({ email: req.body.lecturer, role: User.ROLES.LECTURER });
     if (!lecturer) {
-      return res.status(400).send(`Lecturer ${req.body.lecturer.email} not found`);
+      return res.status(400).send({ error: `Lecturer ${req.body.lecturer.email} not found` });
     }
 
     req.body.lecturer = {
@@ -43,12 +43,13 @@ router.post("/add", auth, uploads.single('students'), userController.grantAccess
       return res.status(400).send(`Missing students`);
     } else {
       const students = await User.find({ studentId: { $in: studentIdList }, role: User.ROLES.USER }, { _id: 1, studentId: 1 });
+
       if (students.length !== studentIdList.length) {
         const existStudent = students.map((student: any) => student.studentId);
         const notFoundStudents = studentIdList.filter((id: string) => !existStudent.includes(id))
 
         return res.status(400).send({
-          message: 'Some students not found',
+          error: 'Some students not found',
           data: notFoundStudents
         });
       }
@@ -82,31 +83,13 @@ router.post("/delete", auth, userController.grantAccess("updateOwn", 'class'), a
       "lecturer.email": req.user.email,
     });
     if (data.deletedCount) {
-      return res.status(200).send("Delete class successfully");
+      return res.status(200).send({ message: "Delete class successfully" });
     }
-    return res.status(401).send("Delete failed");
+    return res.status(401).send({ error: "Delete failed" });
 
   } catch (err) {
     return res.status(401).send({
-      message: "Cannot delete class",
-    });
-  }
-});
-
-router.get('/schedule', auth, async (req: any, res: Response) => {
-  try {
-    const classes = await Class.find([null],
-      {
-        a: 1
-      }
-    );
-
-    console.log(classes);
-
-    res.status(200).send(classes);
-  } catch (error) {
-    return res.status(401).send({
-      message: "Cannot get list class",
+      error: "Cannot delete class",
     });
   }
 });
