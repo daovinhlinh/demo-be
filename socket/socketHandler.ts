@@ -7,9 +7,8 @@ const Attendance = require("../models/Attendance");
 const socketHandler = (io: Server) => {
   io.on("connection", (socket: Socket) => {
     console.log("a user connected");
-    socket.on("startAttendance", async (classId: string) => {
-      console.log(`startAttendance class ${classId}`);
 
+    socket.on("startAttendance", async (classId: string) => {
       try {
         const hasAttendance = await Attendance.findOne({
           classId: classId,
@@ -17,7 +16,10 @@ const socketHandler = (io: Server) => {
         })
 
         if (hasAttendance) {
-          return socket.emit(`startAttendance_${classId}`, hasAttendance);
+          return io.to(socket.id).emit(`startAttendance`, {
+            success: false,
+            error: "Attendance is already in progress",
+          });
         }
 
         const newAttendance = {
@@ -30,7 +32,8 @@ const socketHandler = (io: Server) => {
 
         await new Attendance(newAttendance).save();
         io.emit(`startAttendance_${classId}`, {
-          newAttendance
+          success: true,
+          data: newAttendance
         });
       } catch (e) {
         console.log(e);
