@@ -58,7 +58,7 @@ const userSchema = mongoose.Schema(
       // required: true
     },
     classes: {
-      type: Array
+      type: Array,
     },
     role: {
       type: String,
@@ -66,8 +66,8 @@ const userSchema = mongoose.Schema(
       enum: [ROLES.ADMIN, ROLES.USER, ROLES.LECTURER],
     },
     studentId: {
-      type: String
-    }
+      type: String,
+    },
   },
   {
     timestamps: true,

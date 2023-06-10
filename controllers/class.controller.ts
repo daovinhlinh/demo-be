@@ -1,5 +1,4 @@
-import { NextFunction, Response } from "express";
-import { AttendanceStatus } from "../models/Attendance";
+import { NextFunction, Request, Response } from "express";
 
 const Class = require("../models/Class");
 const Attendance = require("../models/Attendance");
@@ -87,29 +86,30 @@ const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
   }
 };
 
-const checkClassAttendance = async (req: any, res: Response) => {
+const checkClassAttendance = async (req: Request, res: Response) => {
   try {
     const attendance = await Attendance.findOne({
-      classId: req.params.classId,
-      status: AttendanceStatus.IN_PROGRESS,
-    })
+      classId: req.query.classId,
+      status: Attendance.STATUS.IN_PROGRESS,
+    });
+
     if (attendance) {
       return res.status(200).send({
         success: true,
-        data: attendance
-      })
+        data: attendance,
+      });
     } else {
       return res.status(200).send({
         success: true,
-        data: null
-      })
+        data: null,
+      });
     }
   } catch (error) {
     return res.status(401).send({
       success: false,
       message: "Cannot get attendance list",
-    })
+    });
   }
-}
+};
 
-module.exports = { getClassList, getClassDetail };
+module.exports = { getClassList, getClassDetail, checkClassAttendance };

@@ -2,10 +2,10 @@ import { ObjectId } from "mongodb";
 
 const mongoose = require("mongoose");
 
-export enum AttendanceStatus {
-  IN_PROGRESS = "IN_PROGRESS",
-  FINISHED = "FINISHED",
-}
+const STATUS = {
+  IN_PROGRESS: "IN_PROGRESS",
+  FINISHED: "FINISHED",
+};
 
 const attendanceSchema = mongoose.Schema({
   classId: {
@@ -35,3 +35,4 @@ const attendanceSchema = mongoose.Schema({
 
 const Attendance = mongoose.model("Attendance", attendanceSchema);
 module.exports = Attendance;
+module.exports.STATUS = STATUS;
