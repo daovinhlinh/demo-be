@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import mongoose from "mongoose";
 
 const Class = require("../models/Class");
 const Attendance = require("../models/Attendance");
@@ -34,7 +35,7 @@ const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
     const classDetail = await Class.aggregate([
       {
         $match: {
-          classId: req.params.classId,
+          _id: new mongoose.Types.ObjectId(req.params.classId),
         },
       },
       {
@@ -92,7 +93,6 @@ const checkClassAttendance = async (req: Request, res: Response) => {
       classId: req.query.classId,
       status: Attendance.STATUS.IN_PROGRESS,
     });
-
     if (attendance) {
       return res.status(200).send({
         success: true,

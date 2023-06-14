@@ -16,8 +16,6 @@ const router = express.Router();
 
 router.get("/list", auth, classController.getClassList);
 
-router.get("/detail/:classId", auth, classController.getClassDetail);
-
 router.post(
   "/add",
   auth,
@@ -245,5 +243,7 @@ router.post(
 );
 
 router.get("/checkAttendance", auth, classController.checkClassAttendance);
+
+router.get("/:classId", auth, classController.getClassDetail);
 
 module.exports = router;

@@ -26,6 +26,12 @@ const attendanceSchema = mongoose.Schema({
       required: true,
     },
   ],
+  wifi: [
+    {
+      type: String,
+      required: true,
+    }
+  ],
   status: {
     type: String,
     enum: ["IN_PROGRESS", "FINISHED"],
