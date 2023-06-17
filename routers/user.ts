@@ -4,6 +4,8 @@ const express = require("express");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 const userController = require("../controllers/user.controller");
+const jwt = require("jsonwebtoken");
+
 const router = express.Router();
 
 router.post("/register", async (req: Request, res: Response) => {
@@ -44,18 +46,66 @@ router.post("/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     let user = await User.findByCredentials(email, password);
+    console.log(user);
+
     if (!user) {
       return res
         .status(401)
         .send({ error: "Login failed! Check authentication credentials" });
     }
 
-    await user.generateAuthToken();
+    //generate refresh token
+    const generatedData = await user.generateAuthToken();
+    const userData = {
+      ...user._doc,
+      ...generatedData,
+    }
 
-    res.send(user);
+    res.send(userData);
   } catch (error) {
+    console.log(error);
+
     res.status(400).send({
       error: "Login failed! Check authentication credentials",
+    });
+  }
+});
+
+router.post("/refreshToken", async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body;
+
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err: any, decoded: any) => {
+      if (err) {
+        return res.status(401).send({
+          message: "Error when verify token!",
+        });
+      }
+
+      if (decoded.expiredAt < new Date().getTime()) {
+        return res.status(401).send({
+          message: "Token expired!",
+        });
+      }
+
+      const user = await User.findOne({
+        _id: decoded._id,
+      });
+
+      if (!user) {
+        return res
+          .status(401)
+          .send({ error: "Cannot find user" });
+      }
+
+      const token = await jwt.sign({ _id: user._id, expiredAt: new Date().getTime() + 5 * 60 * 1000 }, process.env.JWT_KEY);
+      res.status(200).send({ token });
+    })
+  } catch (error) {
+    console.log(error);
+
+    res.status(400).send({
+      error: "Error when refresh token",
     });
   }
 });
@@ -107,24 +157,6 @@ router.post("/logoutall", auth, async (req: any, res: Response) => {
   }
 });
 
-router.get("/:userId", auth, async (req: Request, res: Response) => {
-  const userId = req.params.userId;
-  if (userId.match(/^[0-9a-fA-F]{24}$/)) {
-    // Yes, it's a valid ObjectId, proceed with `findById` call.
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).send({ error: "User not found" });
-    }
-    return res.status(200).json({
-      user: user,
-    });
-  }
-
-  return res.status(400).send({
-    error: "Invalid user id",
-  });
-});
-
 router.post("/checkLecturer", async (req: any, res: Response) => {
   const user = await User.findOne({ email: req.body.email });
   if (!user) {
@@ -143,6 +175,35 @@ router.post("/checkLecturer", async (req: any, res: Response) => {
     isLecturer: false,
   });
 });
+
+router.get('/userInfo', auth, async (req: any, res: Response) => {
+  const user = await User.findOne({ _id: req.user._id });
+  if (!user) {
+    return res.status(404).send({ error: "User not found" });
+  }
+  return res.status(200).json({
+    user: user,
+  });
+})
+
+router.get("/:userId", auth, async (req: Request, res: Response) => {
+  const userId = req.params.userId;
+  if (userId.match(/^[0-9a-fA-F]{24}$/)) {
+    // Yes, it's a valid ObjectId, proceed with `findById` call.
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send({ error: "User not found" });
+    }
+    return res.status(200).json({
+      user: user,
+    });
+  }
+
+  return res.status(400).send({
+    error: "Invalid user id",
+  });
+});
+
 
 router.get(
   "/",

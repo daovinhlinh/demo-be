@@ -53,10 +53,10 @@ const userSchema = mongoose.Schema(
     //     },
     //   },
     // ],
-    token: {
-      type: String,
-      // required: true
-    },
+    // token: {
+    //   type: String,
+    //   // required: true
+    // },
     classes: {
       type: Array,
     },
@@ -87,11 +87,25 @@ userSchema.pre("save", async function (next: NextFunction) {
 userSchema.methods.generateAuthToken = async function () {
   // Generate an auth token for the user
   const user = this;
-  const token = jwt.sign({ _id: user._id }, process.env.JWT_KEY);
-  console.log(token);
-  user.token = token;
-  await user.save();
-  return token;
+  //5 mins expired
+  const token = jwt.sign({ _id: user._id, expiredAt: new Date().getTime() + 5 * 60 * 1000 }, process.env.JWT_KEY);
+
+  //generate refresh token
+  const refreshToken = jwt.sign(
+    {
+      _id: user._id,
+      //7D expired
+      expiredAt: new Date().getTime() + 7 * 24 * 60 * 60 * 1000,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+  );
+
+  // user.token = token;
+  // await user.save();
+  return {
+    token,
+    refreshToken,
+  };
 };
 
 //Model method

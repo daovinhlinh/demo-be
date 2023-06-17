@@ -15,20 +15,26 @@ const auth = async (req: any, res: Response, next: NextFunction) => {
 
     jwt.verify(token, process.env.JWT_KEY, async (err: any, decoded: any) => {
       if (err) {
-        return res.status(401).send({
-          message: "Unauthorized!"
-        })
+        return res.status(403).send({
+          message: "Unauthorized!",
+        });
+      }
+
+      if (decoded.expiredAt < new Date().getTime()) {
+        return res.status(403).send({
+          message: "Token expired!",
+        });
       }
 
       const user = await User.findOne({
         _id: decoded._id,
-        "token": token,
+        // "token": token,
       });
 
       if (!user) {
-        return res.status(400).send({
-          message: "User not found!"
-        })
+        return res.status(403).send({
+          message: "User not found!",
+        });
         // throw new Error();
       }
 
@@ -42,9 +48,8 @@ const auth = async (req: any, res: Response, next: NextFunction) => {
     //   _id: decoded._id,
     //   "tokens.token": token,
     // });
-
   } catch (error) {
-    res.status(401).send({ error: "Please authenticate." });
+    res.status(403).send({ error: "Please authenticate." });
   }
 };
 
