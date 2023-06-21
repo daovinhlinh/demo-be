@@ -106,8 +106,6 @@ classSchema.pre("save", async function (next: NextFunction) {
 
   for (const student of classData.students) {
     const studentData = await User.findById(student.id);
-    // console.log('studentdata', studentData);
-    console.log('student', student);
 
     if (studentData) {
       const enrollClasses = studentData.classes;
@@ -134,6 +132,12 @@ classSchema.pre("save", async function (next: NextFunction) {
       );
     }
   }
+
+  //update lecturer class
+  await User.updateOne(
+    { email: classData.lecturer.email },
+    { $push: { classes: { id: classData._id } } }
+  )
   next();
 })
 

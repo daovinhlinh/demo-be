@@ -6,11 +6,42 @@ import { pushNotification } from "../config/notification";
 
 const Attendance = require("../models/Attendance");
 
+const handleStopAttendance = async (socket: Socket, timerId: NodeJS.Timeout, classId: string) => {
+  try {
+    const attendance = await Attendance.findOneAndUpdate(
+      {
+        classId: classId,
+        status: Attendance.STATUS.IN_PROGRESS,
+      },
+      {
+        status: Attendance.STATUS.FINISHED,
+      }
+    );
+    console.log("attendance", attendance);
+    const pushNoti = await pushNotification('Attendance', 'Attendance session has ended', {
+      key: classId,
+      value: true
+    })
+    console.log(pushNoti);
+    io.emit(`stopAttendance_${classId}`, {
+      success: true,
+      // data: attendance
+    });
+    clearTimeout(timerId);
+  } catch (e) {
+    socket.emit(`stopAttendance_${classId}`, {
+      success: false,
+      error: "error",
+      // data: attendance
+    });
+  }
+}
+
 const socketHandler = (io: Server) => {
   io.on("connection", (socket: Socket) => {
     console.log("a user connected");
-
-    socket.on("startAttendance", async ({ classId, wifi }) => {
+    let timer: NodeJS.Timeout;
+    socket.on("startAttendance", async ({ classId, wifi, time }) => {
       try {
         const hasAttendance = await Attendance.findOne({
           classId: classId,
@@ -27,7 +58,7 @@ const socketHandler = (io: Server) => {
         const newAttendance = {
           classId: classId,
           startTime: Date.now(),
-          endTime: Date.now() + 5 * 60 * 1000,
+          endTime: Date.now() + time * 60 * 1000,
           students: [],
           status: "IN_PROGRESS",
           wifi: wifi,
@@ -52,6 +83,9 @@ const socketHandler = (io: Server) => {
           success: true,
           data: newAttendance,
         });
+        timer = setTimeout(() => {
+          handleStopAttendance(socket, timer, classId)
+        }, time * 60 * 1000)
       } catch (e) {
         console.log(e);
       }
@@ -60,33 +94,7 @@ const socketHandler = (io: Server) => {
     });
 
     socket.on("stopAttendance", async (classId: string) => {
-      try {
-        const attendance = await Attendance.findOneAndUpdate(
-          {
-            classId: classId,
-            status: Attendance.STATUS.IN_PROGRESS,
-          },
-          {
-            status: Attendance.STATUS.FINISHED,
-          }
-        );
-        console.log("attendance", attendance);
-        const pushNoti = await pushNotification('Attendance', 'Attendance session has ended', {
-          key: classId,
-          value: true
-        })
-        console.log(pushNoti);
-        io.emit(`stopAttendance_${classId}`, {
-          success: true,
-          // data: attendance
-        });
-      } catch (e) {
-        socket.emit(`stopAttendance_${classId}`, {
-          success: false,
-          error: "error",
-          // data: attendance
-        });
-      }
+      handleStopAttendance(socket, timer, classId)
     });
 
 

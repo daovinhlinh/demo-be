@@ -242,6 +242,8 @@ router.post(
   }
 );
 
+router.get('/attendanceHistory', auth, classController.getAttendanceHistory)
+
 router.get("/checkAttendance", auth, classController.checkClassAttendance);
 
 router.get("/:classId", auth, classController.getClassDetail);

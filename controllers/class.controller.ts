@@ -112,4 +112,23 @@ const checkClassAttendance = async (req: Request, res: Response) => {
   }
 };
 
-module.exports = { getClassList, getClassDetail, checkClassAttendance };
+const getAttendanceHistory = async (req: Request, res: Response) => {
+  try {
+    console.log(req.query);
+
+    const attendance = await Attendance.find({
+      classId: req.query.classId
+    });
+
+    return res.status(200).send(
+      attendance,
+    );
+  } catch (error) {
+    return res.status(401).send({
+      success: false,
+      message: "Cannot get attendance list",
+    });
+  }
+}
+
+module.exports = { getClassList, getClassDetail, checkClassAttendance, getAttendanceHistory };
