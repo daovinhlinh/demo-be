@@ -9,3 +9,15 @@ export const hasMatchingElement = (arr1: any[], arr2: any[]): boolean => {
 
   return false;
 }
+
+export const convertArrayDocsToObject = (data: any, prefixString: string): any => {
+  const outputData: any = [];
+  for (const key in data) {
+    const [prefix, index] = key.split('.');
+    if (prefix === prefixString) {
+      outputData.push(data[key]);
+    }
+  }
+
+  return outputData;
+}

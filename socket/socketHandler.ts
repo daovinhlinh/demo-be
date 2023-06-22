@@ -1,10 +1,13 @@
 import { Server } from "socket.io";
 import { Socket } from "socket.io/dist/socket";
 import { io } from "..";
-import { hasMatchingElement } from "../commons";
+import { convertArrayDocsToObject, hasMatchingElement } from "../commons";
 import { pushNotification } from "../config/notification";
+import mongoose from "mongoose";
+
 
 const Attendance = require("../models/Attendance");
+const User = require("../models/User");
 
 const handleStopAttendance = async (socket: Socket, timerId: NodeJS.Timeout, classId: string) => {
   try {
@@ -38,6 +41,8 @@ const handleStopAttendance = async (socket: Socket, timerId: NodeJS.Timeout, cla
 }
 
 const socketHandler = (io: Server) => {
+  const changeStream = Attendance.watch();
+
   io.on("connection", (socket: Socket) => {
     console.log("a user connected");
     let timer: NodeJS.Timeout;
@@ -74,10 +79,49 @@ const socketHandler = (io: Server) => {
             }
           }
         })
-        console.log(pushNoti);
 
         await new Attendance(newAttendance).save();
-        console.log("newAttendance", newAttendance);
+
+        changeStream.on("change", async (change: any) => {
+
+          //handle update data here
+          //change data is array of ids
+          //convert ids to list users data
+          //send to client
+          if (change.operationType == 'update') {
+            console.log('change', change);
+
+            // async.eachSeries(change.updateDescription.)
+            const updateData = convertArrayDocsToObject(change.updateDescription.updatedFields, 'students');
+
+            if (updateData.length > 0 && !Array.isArray(updateData[0])) {
+              // async.eachSeries(updateData, async (studentId: string, callback: any) => {
+              //   const student = await User.find({
+              //     _id: studentId
+              //   })
+              //   callback(null, student)
+              // })
+              const updateStudentData = updateData.map((studentId: string) => new mongoose.Types.ObjectId(studentId));
+              console.log('updateStudentData', updateStudentData);
+
+              try {
+                const students = await User.find({
+                  _id: {
+                    $in: updateStudentData
+                  },
+                  role: User.ROLES.USER
+                });
+                console.log('students', students);
+                socket.emit(`updateAttendance_${classId}`, {
+                  success: true,
+                  data: students
+                })
+              } catch (e) {
+                console.log(e);
+              }
+            }
+          }
+        })
 
         io.emit(`startAttendance_${classId}`, {
           success: true,
