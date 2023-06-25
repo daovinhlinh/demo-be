@@ -131,4 +131,20 @@ const getAttendanceHistory = async (req: Request, res: Response) => {
   }
 }
 
-module.exports = { getClassList, getClassDetail, checkClassAttendance, getAttendanceHistory };
+const searchClass = async (req: Request, res: Response) => {
+  //Search by name
+  try {
+    const classes = await Class.find({
+      name: { $regex: req.query.name, $options: "i" },
+    });
+    return res.status(200).send(classes);
+  }
+  catch (error) {
+    return res.status(401).send({
+      success: false,
+      message: "Cannot get class list",
+    });
+  }
+}
+
+module.exports = { getClassList, getClassDetail, checkClassAttendance, getAttendanceHistory, searchClass };

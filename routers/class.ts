@@ -246,6 +246,8 @@ router.get('/attendanceHistory', auth, classController.getAttendanceHistory)
 
 router.get("/checkAttendance", auth, classController.checkClassAttendance);
 
+router.get("/search", auth, classController.searchClass);
+
 router.get("/:classId", auth, classController.getClassDetail);
 
 module.exports = router;
