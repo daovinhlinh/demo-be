@@ -161,7 +161,7 @@ const socketHandler = (io: Server) => {
       } else {
 
         if (hasMatchingElement(attendance.wifi, wifi)) {
-          attendance.students.push(studentId);
+          attendance.students.push(new mongoose.Types.ObjectId(studentId));
           await attendance.save();
           return io.to(socket.id).emit(`checkin`, {
             success: true,

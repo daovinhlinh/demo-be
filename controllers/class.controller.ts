@@ -142,7 +142,7 @@ const getAttendanceDetail = async (req: Request, res: Response) => {
           from: "users",
           localField: "students",
           foreignField: "_id",
-          as: "students",
+          as: "checkinStudent",
         },
       },
       // {
@@ -184,12 +184,21 @@ const getAttendanceDetail = async (req: Request, res: Response) => {
       _id: attendance[0].classId,
     });
     console.log(classData);
+    console.log(attendance[0]);
 
-    const missStudent = attendance[0].students.filter((student: any) => {
-      return !classData.students.some((el: any) => el.id === student._id);
+    const missStudent = classData.students.filter((student: any) => {
+      return !attendance[0].students.some((el: any) => el._id.equals(student.id));
     });
 
-    return res.status(200).send({ ...attendance[0], missStudent });
+    if (missStudent.length > 0) {
+      const missStudentData = await User.find({
+        _id: { $in: missStudent.map((el: any) => el.id) },
+      });
+      return res.status(200).send({ ...attendance[0], missStudent: missStudentData });
+    } else {
+      return res.status(200).send({ ...attendance[0], missStudent: [] });
+    }
+
   } catch (error) {
     console.log(error);
 
@@ -208,8 +217,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-        ? { day: new Date().getDay, semester: req.query.semester }
-        : {}),
+          ? { day: new Date().getDay, semester: req.query.semester }
+          : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
