@@ -117,34 +117,114 @@ const getAttendanceHistory = async (req: Request, res: Response) => {
     console.log(req.query);
 
     const attendance = await Attendance.find({
-      classId: req.query.classId
+      classId: req.query.classId,
     });
 
-    return res.status(200).send(
-      attendance,
-    );
+    return res.status(200).send(attendance);
   } catch (error) {
     return res.status(401).send({
       success: false,
       message: "Cannot get attendance list",
     });
   }
-}
+};
+
+const getAttendanceDetail = async (req: Request, res: Response) => {
+  try {
+    const attendance = await Attendance.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(req.params.attendanceId),
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "students",
+          foreignField: "_id",
+          as: "students",
+        },
+      },
+      // {
+      //   $project: {
+      //     _id: 1,
+      //     classId: 1,
+      //     note: 1,
+      //     status: 1,
+      //     startTime: 1,
+      //     endTime: 1,
+      //     students: {
+      //       $map: {
+      //         input: "$temp_students",
+      //         as: "student",
+      //         in: {
+      //           $mergeObjects: [
+      //             {
+      //               $arrayElemAt: [
+      //                 {
+      //                   $filter: {
+      //                     input: "$students",
+      //                     as: "s",
+      //                     cond: { $eq: ["$$s", "$$student._id"] },
+      //                   },
+      //                 },
+      //                 0,
+      //               ],
+      //             },
+      //             "$$student",
+      //           ],
+      //         },
+      //       },
+      //     },
+      //   },
+      // },
+    ]);
+
+    const classData = await Class.findOne({
+      _id: attendance[0].classId,
+    });
+    console.log(classData);
+
+    const missStudent = attendance[0].students.filter((student: any) => {
+      return !classData.students.some((el: any) => el.id === student._id);
+    });
+
+    return res.status(200).send({ ...attendance[0], missStudent });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(401).send({
+      success: false,
+      message: "Cannot get attendance list",
+    });
+  }
+};
 
 const searchClass = async (req: Request, res: Response) => {
   //Search by name
   try {
     const classes = await Class.find({
       name: { $regex: req.query.name, $options: "i" },
+      ...(req.query.filter && req.query.filter === "This semester"
+        ? { semester: req.query.semester }
+        : req.query.filter === "Today"
+        ? { day: new Date().getDay, semester: req.query.semester }
+        : {}),
     });
     return res.status(200).send(classes);
-  }
-  catch (error) {
+  } catch (error) {
     return res.status(401).send({
       success: false,
       message: "Cannot get class list",
     });
   }
-}
+};
 
-module.exports = { getClassList, getClassDetail, checkClassAttendance, getAttendanceHistory, searchClass };
+module.exports = {
+  getClassList,
+  getClassDetail,
+  checkClassAttendance,
+  getAttendanceHistory,
+  searchClass,
+  getAttendanceDetail,
+};

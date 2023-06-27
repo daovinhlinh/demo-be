@@ -161,58 +161,58 @@ router.post(
     session.startTransaction();
     Promise.all([
       addStudent.length > 0 &&
-      (await User.updateMany(
-        {
-          email: { $in: addStudent },
-        },
-        {
-          $set: {
+        (await User.updateMany(
+          {
+            email: { $in: addStudent },
+          },
+          {
+            $set: {
+              classes: {
+                id: req.body.id,
+                name: updateData.name,
+                semester: updateData.semester,
+                schedules: updateData.schedules,
+              },
+            },
+          }
+        )),
+      //update student
+      updateStudent.length > 0 &&
+        (await User.updateMany(
+          {
+            email: { $in: updateStudent },
+            "classes.id": req.body.id,
+          },
+          {
             classes: {
               id: req.body.id,
               name: updateData.name,
               semester: updateData.semester,
               schedules: updateData.schedules,
             },
-          },
-        }
-      )),
-      //update student
-      updateStudent.length > 0 &&
-      (await User.updateMany(
-        {
-          email: { $in: updateStudent },
-          "classes.id": req.body.id,
-        },
-        {
-          classes: {
-            id: req.body.id,
-            name: updateData.name,
-            semester: updateData.semester,
-            schedules: updateData.schedules,
-          },
-        }
-      )),
+          }
+        )),
       removeStudent.length > 0 &&
-      (await User.updateMany(
-        {
-          email: {
-            $in:
-              // removeStudent.map((student: any) => student.email)
-              removeStudent,
-          },
-        },
-        {
-          $pull: {
-            classes: {
-              id: req.body.id,
+        (await User.updateMany(
+          {
+            email: {
+              $in:
+                // removeStudent.map((student: any) => student.email)
+                removeStudent,
             },
           },
-        },
-        {
-          upsert: false,
-          multi: true,
-        }
-      )),
+          {
+            $pull: {
+              classes: {
+                id: req.body.id,
+              },
+            },
+          },
+          {
+            upsert: false,
+            multi: true,
+          }
+        )),
       await Class.updateOne(
         {
           _id: req.body.id,
@@ -242,7 +242,13 @@ router.post(
   }
 );
 
-router.get('/attendanceHistory', auth, classController.getAttendanceHistory)
+router.get("/attendanceHistory", auth, classController.getAttendanceHistory);
+
+router.get(
+  "/attendance/:attendanceId",
+  auth,
+  classController.getAttendanceDetail
+);
 
 router.get("/checkAttendance", auth, classController.checkClassAttendance);
 

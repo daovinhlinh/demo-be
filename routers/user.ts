@@ -59,7 +59,7 @@ router.post("/login", async (req: Request, res: Response) => {
     const userData = {
       ...user._doc,
       ...generatedData,
-    }
+    };
 
     res.send(userData);
   } catch (error) {
@@ -75,32 +75,40 @@ router.post("/refreshToken", async (req: Request, res: Response) => {
   try {
     const { refreshToken } = req.body;
 
-    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err: any, decoded: any) => {
-      if (err) {
-        return res.status(401).send({
-          message: "Error when verify token!",
+    jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET,
+      async (err: any, decoded: any) => {
+        if (err) {
+          return res.status(401).send({
+            message: "Error when verify token!",
+          });
+        }
+
+        if (decoded.expiredAt < new Date().getTime()) {
+          return res.status(401).send({
+            message: "Token expired!",
+          });
+        }
+
+        const user = await User.findOne({
+          _id: decoded._id,
         });
+
+        if (!user) {
+          return res.status(401).send({ error: "Cannot find user" });
+        }
+
+        const token = await jwt.sign(
+          {
+            _id: user._id,
+            expiredAt: new Date().getTime() + 5 * 60 * 60 * 1000,
+          },
+          process.env.JWT_KEY
+        );
+        res.status(200).send({ token });
       }
-
-      if (decoded.expiredAt < new Date().getTime()) {
-        return res.status(401).send({
-          message: "Token expired!",
-        });
-      }
-
-      const user = await User.findOne({
-        _id: decoded._id,
-      });
-
-      if (!user) {
-        return res
-          .status(401)
-          .send({ error: "Cannot find user" });
-      }
-
-      const token = await jwt.sign({ _id: user._id, expiredAt: new Date().getTime() + 5 * 60 * 1000 }, process.env.JWT_KEY);
-      res.status(200).send({ token });
-    })
+    );
   } catch (error) {
     console.log(error);
 
@@ -176,7 +184,7 @@ router.post("/checkLecturer", async (req: any, res: Response) => {
   });
 });
 
-router.get('/userInfo', auth, async (req: any, res: Response) => {
+router.get("/userInfo", auth, async (req: any, res: Response) => {
   const user = await User.findOne({ _id: req.user._id });
   if (!user) {
     return res.status(404).send({ error: "User not found" });
@@ -184,7 +192,7 @@ router.get('/userInfo', auth, async (req: any, res: Response) => {
   return res.status(200).json({
     user: user,
   });
-})
+});
 
 router.get("/:userId", auth, async (req: Request, res: Response) => {
   const userId = req.params.userId;
@@ -203,7 +211,6 @@ router.get("/:userId", auth, async (req: Request, res: Response) => {
     error: "Invalid user id",
   });
 });
-
 
 router.get(
   "/",
