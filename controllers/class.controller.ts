@@ -187,18 +187,21 @@ const getAttendanceDetail = async (req: Request, res: Response) => {
     console.log(attendance[0]);
 
     const missStudent = classData.students.filter((student: any) => {
-      return !attendance[0].students.some((el: any) => el._id.equals(student.id));
+      return !attendance[0].students.some((el: any) =>
+        el._id.equals(student.id)
+      );
     });
 
     if (missStudent.length > 0) {
       const missStudentData = await User.find({
         _id: { $in: missStudent.map((el: any) => el.id) },
       });
-      return res.status(200).send({ ...attendance[0], missStudent: missStudentData });
+      return res
+        .status(200)
+        .send({ ...attendance[0], missStudent: missStudentData });
     } else {
       return res.status(200).send({ ...attendance[0], missStudent: [] });
     }
-
   } catch (error) {
     console.log(error);
 
@@ -217,14 +220,81 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-          ? { day: new Date().getDay, semester: req.query.semester }
-          : {}),
+        ? { day: new Date().getDay, semester: req.query.semester }
+        : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
     return res.status(401).send({
       success: false,
       message: "Cannot get class list",
+    });
+  }
+};
+
+const updateAttendance = async (req: Request, res: Response) => {
+  try {
+    console.log(req.body);
+
+    const attendance = await Attendance.findOne({
+      _id: req.body.attendanceId,
+    });
+    if (attendance) {
+      //update student from checkin to missed or vice versa
+
+      //Update miss to checked in
+      if (req.body.status === 1) {
+        //find class and increase student checkin count and decrease miss count
+        const classData = await Class.findOne({
+          _id: attendance.classId,
+          "students.id": req.body.studentId,
+        });
+
+        classData.students.forEach((student: any) => {
+          if (student.id.equals(req.body.studentId)) {
+            student.lateCount -= student.lateCount > 0 ? 1 : 0;
+            student.presentCount += 1;
+          }
+        });
+
+        attendance.students.push(
+          new mongoose.Types.ObjectId(req.body.studentId)
+        );
+      } else if (req.body.status === 2) {
+        //Update checked in to miss
+        //find class and increase student miss count and decrease checkin count
+        const classData = await Class.findOne({
+          _id: attendance.classId,
+          "students.id": req.body.studentId,
+        });
+
+        classData.students.forEach((student: any) => {
+          if (student.id.equals(req.body.studentId)) {
+            student.presentCount -= student.presentCount > 0 ? 1 : 0;
+            student.lateCount += 1;
+          }
+        });
+
+        attendance.students = attendance.students.filter(
+          (el: any) => !el.equals(req.body.studentId)
+        );
+      }
+
+      await attendance.save();
+      return res.status(200).send({
+        success: true,
+        message: "Update attendance successfully",
+      });
+    }
+
+    return res.status(401).send({
+      success: false,
+      message: "Cannot find attendance",
+    });
+  } catch (error) {
+    return res.status(401).send({
+      success: false,
+      message: "Cannot update attendance",
     });
   }
 };
@@ -236,4 +306,5 @@ module.exports = {
   getAttendanceHistory,
   searchClass,
   getAttendanceDetail,
+  updateAttendance,
 };
