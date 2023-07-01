@@ -53,6 +53,58 @@ const socketHandler = (io: Server) => {
   io.on("connection", (socket: Socket) => {
     console.log("a user connected");
     let timer: NodeJS.Timeout;
+
+    changeStream.on("change", async (change: any) => {
+      console.log("change", change);
+      //handle update data here
+      //change data is array of ids
+      //convert ids to list users data
+      //send to client
+
+      const updatedAttendance = await Attendance.findOne({
+        _id: change.documentKey._id,
+      });
+      console.log("updatedAttendance", updatedAttendance);
+
+      if (change.operationType == "update") {
+        // async.eachSeries(change.updateDescription.)
+        const updateData = convertArrayDocsToObject(
+          change.updateDescription.updatedFields,
+          "students"
+        );
+
+        try {
+          const students = await User.find({
+            _id: {
+              $in: updatedAttendance.students,
+            },
+            role: User.ROLES.USER,
+          });
+
+          const uncheckStudents = await User.find({
+            _id: {
+              $nin: updatedAttendance.students,
+            },
+            role: User.ROLES.USER,
+          });
+
+          console.log(
+            "`updateAttendance_${updatedAttendance._id}`",
+            `updateAttendance_${updatedAttendance._id}`
+          );
+          socket.emit(`updateAttendance_${updatedAttendance._id}`, {
+            success: true,
+            data: {
+              checkinStudent: students,
+              uncheckStudent: uncheckStudents,
+            },
+          });
+        } catch (e) {
+          console.log(e);
+        }
+      }
+    });
+
     socket.on("startAttendance", async ({ classId, wifi, time }) => {
       try {
         const hasAttendance = await Attendance.findOne({
@@ -93,51 +145,6 @@ const socketHandler = (io: Server) => {
         );
 
         await new Attendance(newAttendance).save();
-
-        changeStream.on("change", async (change: any) => {
-          //handle update data here
-          //change data is array of ids
-          //convert ids to list users data
-          //send to client
-          if (change.operationType == "update") {
-            console.log("change", change);
-
-            // async.eachSeries(change.updateDescription.)
-            const updateData = convertArrayDocsToObject(
-              change.updateDescription.updatedFields,
-              "students"
-            );
-
-            if (updateData.length > 0 && !Array.isArray(updateData[0])) {
-              // async.eachSeries(updateData, async (studentId: string, callback: any) => {
-              //   const student = await User.find({
-              //     _id: studentId
-              //   })
-              //   callback(null, student)
-              // })
-              const updateStudentData = updateData.map(
-                (studentId: string) => new mongoose.Types.ObjectId(studentId)
-              );
-              console.log("updateStudentData", updateStudentData);
-
-              try {
-                const students = await User.find({
-                  _id: {
-                    $in: updateStudentData,
-                  },
-                  role: User.ROLES.USER,
-                });
-                console.log("students", students);
-                socket.emit(`updateAttendance_${classId}`, {
-                  success: true,
-                  data: students,
-                });
-              } catch (e) {
-                console.log(e);
-              }
-            }
-          }
-        });
 
         io.emit(`startAttendance_${classId}`, {
           success: true,
