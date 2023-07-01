@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 
 const Class = require("../models/Class");
 const Attendance = require("../models/Attendance");
+const AbsenceRequest = require("../models/AbsenceRequest");
 const User = require("../models/User");
 
 const getClassList = async (req: any, res: Response) => {
@@ -299,6 +300,61 @@ const updateAttendance = async (req: Request, res: Response) => {
   }
 };
 
+const addAbsenceRequest = async (req: any, res: Response) => {
+  try {
+    const classData = await Class.findOne({
+      _id: req.body.classId,
+      "students.id": req.user._id,
+    });
+
+    console.log("classData", classData);
+
+    //Check if student is in class
+    if (!classData) {
+      return res.status(401).send({
+        success: false,
+        message: "Cannot find class",
+      });
+    }
+
+    const newRequest = new AbsenceRequest({
+      classId: req.body.classId,
+      studentId: req.user._id,
+      reason: req.body.reason,
+      date: req.body.date,
+    });
+    console.log("newRequest", newRequest);
+
+    await newRequest.save();
+
+    return res.status(200).send({
+      success: true,
+      message: "Request absence successfully",
+    });
+  } catch (error) {
+    return res.status(401).send({
+      success: false,
+      message: "Cannot request absence",
+    });
+  }
+};
+
+const getAbsenceRequest = async (req: Request, res: Response) => {
+  try {
+    const requests = await AbsenceRequest.findOne({
+      classId: req.params.classId,
+      ...(req.body.studentId && { studentId: req.body.studentId }),
+    });
+
+    return res.status(200).send(requests);
+  } catch (error) {
+    return res.status(401).send({
+      success: false,
+      message: "Cannot get absence request",
+    });
+  }
+};
+
 module.exports = {
   getClassList,
   getClassDetail,
@@ -307,4 +363,6 @@ module.exports = {
   searchClass,
   getAttendanceDetail,
   updateAttendance,
+  addAbsenceRequest,
+  getAbsenceRequest,
 };

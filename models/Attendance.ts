@@ -30,7 +30,7 @@ const attendanceSchema = mongoose.Schema({
     {
       type: String,
       required: true,
-    }
+    },
   ],
   status: {
     type: String,

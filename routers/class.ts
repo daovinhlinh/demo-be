@@ -250,13 +250,25 @@ router.get("/attendanceHistory", auth, classController.getAttendanceHistory);
 
 router.post("/updateAttendance", auth, classController.updateAttendance);
 
+router.get("/checkAttendance", auth, classController.checkClassAttendance);
+
+router.post(
+  "/attendance/absenceRequest",
+  auth,
+  classController.addAbsenceRequest
+);
+
+router.get(
+  "/attendance/absenceRequest/:classId",
+  auth,
+  classController.getAbsenceRequest
+);
+
 router.get(
   "/attendance/:attendanceId",
   auth,
   classController.getAttendanceDetail
 );
-
-router.get("/checkAttendance", auth, classController.checkClassAttendance);
 
 router.get("/search", auth, classController.searchClass);
 
