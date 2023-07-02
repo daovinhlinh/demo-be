@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 
@@ -221,8 +222,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-        ? { day: new Date().getDay, semester: req.query.semester }
-        : {}),
+          ? { day: new Date().getDay, semester: req.query.semester }
+          : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
@@ -339,18 +340,118 @@ const addAbsenceRequest = async (req: any, res: Response) => {
   }
 };
 
-const getAbsenceRequest = async (req: Request, res: Response) => {
+const getAbsenceRequest = async (req: any, res: Response) => {
   try {
-    const requests = await AbsenceRequest.findOne({
-      classId: req.params.classId,
-      ...(req.body.studentId && { studentId: req.body.studentId }),
-    });
+
+    const requests = await AbsenceRequest.aggregate([
+      {
+        $match: {
+          classId: new mongoose.Types.ObjectId(req.params.classId),
+          ...(req.user.role === User.ROLES.USER && { studentId: req.user._id }),
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "studentId",
+          foreignField: "_id",
+          as: "student",
+        },
+      },
+      {
+        $project: {
+          student: {
+            $first: "$student",
+          },
+          classId: 1,
+          reason: 1,
+          date: 1,
+          status: 1,
+        }
+      }
+    ])
+    // const requests = await AbsenceRequest.find({
+    //   classId: req.params.classId,
+    //   ...(req.user.role === User.ROLES.USER && { studentId: req.user._id }),
+    // });
 
     return res.status(200).send(requests);
   } catch (error) {
     return res.status(401).send({
       success: false,
       message: "Cannot get absence request",
+    });
+  }
+};
+
+
+//approve/reject absence request
+const updateAbsenceRequest = async (req: any, res: Response) => {
+  try {
+    const request = await AbsenceRequest.findOne({
+      _id: req.body.requestId,
+    });
+
+    if (request) {
+      try {
+        const classData = await Class.findOne({
+          _id: request.classId,
+        })
+
+        if (!classData) {
+          return res.status(401).send({
+            success: false,
+            message: "Cannot find class",
+          });
+        }
+
+        if (req.body.status === AbsenceRequest.STATUS.APPROVED) {
+          //Update student absence count
+          classData.students.forEach((student: any) => {
+            if (student.id.equals(request.studentId)) {
+              student.absentRequestCount += 1;
+            }
+          });
+
+          const requestDate = dayjs(request.date).format("DDMMYYYY");
+          if (classData.absenceRequests && classData.absenceRequests[requestDate]) {
+            classData.absenceRequests[requestDate].push(new mongoose.Types.ObjectId(request.studentId));
+          } else {
+            classData.absenceRequests[requestDate] = [request.studentId];
+          }
+          console.log("classData", classData)
+          const saveClass = await classData.save();
+          console.log("saveClass", saveClass)
+
+        }
+      }
+      catch (error) {
+        console.log("error", error);
+
+        return res.status(401).send({
+          success: false,
+          message: "Cannot update absence request",
+        });
+      }
+
+
+      request.status = req.body.status;
+      await request.save();
+
+      return res.status(200).send({
+        success: true,
+        message: "Update absence request successfully",
+      });
+    }
+
+    return res.status(401).send({
+      success: false,
+      message: "Cannot find absence request",
+    });
+  } catch (error) {
+    return res.status(401).send({
+      success: false,
+      message: "Cannot update absence request",
     });
   }
 };
@@ -365,4 +466,5 @@ module.exports = {
   updateAttendance,
   addAbsenceRequest,
   getAbsenceRequest,
+  updateAbsenceRequest
 };

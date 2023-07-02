@@ -4,9 +4,11 @@ import { io } from "..";
 import { convertArrayDocsToObject, hasMatchingElement } from "../commons";
 import { pushNotification } from "../config/notification";
 import mongoose from "mongoose";
+import dayjs from "dayjs";
 
 const Attendance = require("../models/Attendance");
 const User = require("../models/User");
+const Class = require("../models/Class");
 
 const handleStopAttendance = async (
   socket: Socket,
@@ -119,11 +121,29 @@ const socketHandler = (io: Server) => {
           });
         }
 
+        const classData = await Class.findOne({
+          _id: classId,
+        });
+
+        if (!classData) {
+          return io.to(socket.id).emit(`startAttendance`, {
+            success: false,
+            error: "Class not found",
+          });
+        }
+
+        //Cheeck if today have absence request
+        const today = Date.now();
+        const students = [];
+        if (classData.absenceRequests[dayjs(today).format('DDMMYYYY')]) {
+          students.push(classData[dayjs(today).format('DDMMYYYY')])
+        }
+
         const newAttendance = {
           classId: classId,
           startTime: Date.now(),
           endTime: Date.now() + time * 60 * 1000,
-          students: [],
+          students: students,
           status: "IN_PROGRESS",
           wifi: wifi,
         };

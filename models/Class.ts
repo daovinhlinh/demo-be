@@ -1,4 +1,5 @@
 import { NextFunction } from "express";
+import { Schema } from "mongoose";
 
 const mongoose = require("mongoose");
 const User = require("../models/User");
@@ -90,56 +91,61 @@ const classSchema = mongoose.Schema(
         },
       },
     ],
+    //data type: absenceRequests: {"02072023": [studentId]}
+    // absenceRequests: {
+    //   type: mongoose.Mixed,
+    // },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
     }
   },
   {
-    timestamps: true,
-  }
+    // timestamps: true,
+    strict: false
+  },
 );
 
-classSchema.pre("save", async function (next: NextFunction) {
-  const classData = this;
+// classSchema.pre("save", async function (next: NextFunction) {
+//   const classData = this;
 
-  // const studentList = classData.students.map((student: any) => student.id);
+//   // const studentList = classData.students.map((student: any) => student.id);
 
-  for (const student of classData.students) {
-    const studentData = await User.findById(student.id);
+//   for (const student of classData.students) {
+//     const studentData = await User.findById(student.id);
 
-    if (studentData) {
-      const enrollClasses = studentData.classes;
+//     if (studentData) {
+//       const enrollClasses = studentData.classes;
 
-      const existingClassIndex = enrollClasses.findIndex((item: any) => item.id === classData._id);
+//       const existingClassIndex = enrollClasses.findIndex((item: any) => item.id === classData._id);
 
-      if (existingClassIndex !== -1) {
-        enrollClasses[existingClassIndex].presentCount = student.presentCount;
-        enrollClasses[existingClassIndex].absentRequestCount = student.absentRequestCount;
-        enrollClasses[existingClassIndex].lateCount = student.lateCount;
-      } else {
-        enrollClasses.push({
-          id: classData._id,
-          presentCount: student.presentCount,
-          absentRequestCount: student.absentRequestCount,
-          lateCount: student.lateCount,
-        });
-      }
-      console.log('enrollClasses', enrollClasses);
+//       if (existingClassIndex !== -1) {
+//         enrollClasses[existingClassIndex].presentCount = student.presentCount;
+//         enrollClasses[existingClassIndex].absentRequestCount = student.absentRequestCount;
+//         enrollClasses[existingClassIndex].lateCount = student.lateCount;
+//       } else {
+//         enrollClasses.push({
+//           id: classData._id,
+//           presentCount: student.presentCount,
+//           absentRequestCount: student.absentRequestCount,
+//           lateCount: student.lateCount,
+//         });
+//       }
+//       console.log('enrollClasses', enrollClasses);
 
-      await User.updateOne(
-        { _id: student.id },
-        { $set: { classes: enrollClasses } }
-      );
-    }
-  }
+//       await User.updateOne(
+//         { _id: student.id },
+//         { $set: { classes: enrollClasses } }
+//       );
+//     }
+//   }
 
-  //update lecturer class
-  await User.updateOne(
-    { email: classData.lecturer.email },
-    { $push: { classes: { id: classData._id } } }
-  )
-  next();
-})
+//   //update lecturer class
+//   await User.updateOne(
+//     { email: classData.lecturer.email },
+//     { $push: { classes: { id: classData._id } } }
+//   )
+//   next();
+// })
 
 const Class = mongoose.model("Class", classSchema);
 module.exports = Class;
