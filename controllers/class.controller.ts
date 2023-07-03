@@ -222,8 +222,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-          ? { day: new Date().getDay, semester: req.query.semester }
-          : {}),
+        ? { day: new Date().getDay, semester: req.query.semester }
+        : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
@@ -318,6 +318,23 @@ const addAbsenceRequest = async (req: any, res: Response) => {
       });
     }
 
+    //Check if student has already requested
+    const request = await AbsenceRequest.findOne({
+      classId: req.body.classId,
+      studentId: req.user._id,
+      date: {
+        $gte: dayjs(req.body.date).startOf("day").toDate(),
+        $lte: dayjs(req.body.date).endOf("day").toDate(),
+      },
+    });
+
+    if (request) {
+      return res.status(401).send({
+        success: false,
+        message: "You have already requested",
+      });
+    }
+
     const newRequest = new AbsenceRequest({
       classId: req.body.classId,
       studentId: req.user._id,
@@ -342,7 +359,6 @@ const addAbsenceRequest = async (req: any, res: Response) => {
 
 const getAbsenceRequest = async (req: any, res: Response) => {
   try {
-
     const requests = await AbsenceRequest.aggregate([
       {
         $match: {
@@ -367,9 +383,9 @@ const getAbsenceRequest = async (req: any, res: Response) => {
           reason: 1,
           date: 1,
           status: 1,
-        }
-      }
-    ])
+        },
+      },
+    ]);
     // const requests = await AbsenceRequest.find({
     //   classId: req.params.classId,
     //   ...(req.user.role === User.ROLES.USER && { studentId: req.user._id }),
@@ -384,7 +400,6 @@ const getAbsenceRequest = async (req: any, res: Response) => {
   }
 };
 
-
 //approve/reject absence request
 const updateAbsenceRequest = async (req: any, res: Response) => {
   try {
@@ -396,7 +411,7 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
       try {
         const classData = await Class.findOne({
           _id: request.classId,
-        })
+        }).lean();
 
         if (!classData) {
           return res.status(401).send({
@@ -414,18 +429,43 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
           });
 
           const requestDate = dayjs(request.date).format("DDMMYYYY");
-          if (classData.absenceRequests && classData.absenceRequests[requestDate]) {
-            classData.absenceRequests[requestDate].push(new mongoose.Types.ObjectId(request.studentId));
+          if (
+            classData.absenceRequests &&
+            classData.absenceRequests[requestDate]
+          ) {
+            if (
+              !classData.absenceRequests[requestDate].includes(
+                request.studentId
+              )
+            ) {
+              classData.absenceRequests[requestDate].push(request.studentId);
+            }
           } else {
             classData.absenceRequests[requestDate] = [request.studentId];
           }
-          console.log("classData", classData)
-          const saveClass = await classData.save();
-          console.log("saveClass", saveClass)
 
+          const attendances = await Attendance.updateMany(
+            {
+              classId: request.classId,
+              startTime: {
+                $gte: dayjs(request.date).startOf("day").toDate(),
+                $lte: dayjs(request.date).endOf("day").toDate(),
+              },
+            },
+            {
+              $push: {
+                students: request.studentId,
+              },
+            }
+          );
+
+          console.log("attendances", attendances);
+
+          await Class.findByIdAndUpdate(classData._id, classData, {
+            new: true,
+          });
         }
-      }
-      catch (error) {
+      } catch (error) {
         console.log("error", error);
 
         return res.status(401).send({
@@ -433,7 +473,6 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
           message: "Cannot update absence request",
         });
       }
-
 
       request.status = req.body.status;
       await request.save();
@@ -466,5 +505,5 @@ module.exports = {
   updateAttendance,
   addAbsenceRequest,
   getAbsenceRequest,
-  updateAbsenceRequest
+  updateAbsenceRequest,
 };

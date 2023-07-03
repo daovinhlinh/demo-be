@@ -54,11 +54,11 @@ const classSchema = mongoose.Schema(
             DAYS.SAT,
             DAYS.SUN,
           ],
-          required: true
+          required: true,
         },
         location: {
           type: String,
-          required: true
+          required: true,
         },
         startTime: {
           type: String,
@@ -89,20 +89,22 @@ const classSchema = mongoose.Schema(
           type: Number,
           default: 0,
         },
+        _id: false,
       },
     ],
     //data type: absenceRequests: {"02072023": [studentId]}
-    // absenceRequests: {
-    //   type: mongoose.Mixed,
-    // },
+    absenceRequests: {
+      type: Object,
+      default: {},
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-    }
+    },
   },
   {
-    // timestamps: true,
-    strict: false
-  },
+    timestamps: true,
+    strict: false,
+  }
 );
 
 // classSchema.pre("save", async function (next: NextFunction) {
@@ -149,4 +151,4 @@ const classSchema = mongoose.Schema(
 
 const Class = mongoose.model("Class", classSchema);
 module.exports = Class;
-export { };
+export {};

@@ -25,7 +25,8 @@ router.post(
     try {
       const file: any = req.file;
       const fileResult = await csv().fromFile(file.path);
-      const studentIdList = fileResult.map((item: any) => item.id);
+      console.log(fileResult);
+      const studentIdList = fileResult.map((item: any) => item.student_id);
 
       req.body.schedules = JSON.parse(req.body.schedules);
       try {
@@ -72,14 +73,11 @@ router.post(
 
           req.body.students = fileResult.map((item: any) => {
             const findStudent = students.find(
-              (student: any) => student.studentId === item.id
+              (student: any) => student.studentId === item.student_id
             );
             console.log(findStudent);
 
-            return {
-              ...item,
-              id: findStudent._id,
-            };
+            return { id: findStudent._id };
           });
           req.body.createdBy = (req as unknown as IAuth).user._id;
           const newClass = new Class(req.body);
@@ -87,9 +85,13 @@ router.post(
           res.status(201).send({ success: true, newClass });
         }
       } catch (error) {
+        console.log(error);
+
         return res.status(401).send(error);
       }
     } catch (error) {
+      console.log(error);
+
       return res.status(401).send(error);
     }
   }
@@ -165,58 +167,58 @@ router.post(
     session.startTransaction();
     Promise.all([
       addStudent.length > 0 &&
-      (await User.updateMany(
-        {
-          email: { $in: addStudent },
-        },
-        {
-          $set: {
+        (await User.updateMany(
+          {
+            email: { $in: addStudent },
+          },
+          {
+            $set: {
+              classes: {
+                id: req.body.id,
+                name: updateData.name,
+                semester: updateData.semester,
+                schedules: updateData.schedules,
+              },
+            },
+          }
+        )),
+      //update student
+      updateStudent.length > 0 &&
+        (await User.updateMany(
+          {
+            email: { $in: updateStudent },
+            "classes.id": req.body.id,
+          },
+          {
             classes: {
               id: req.body.id,
               name: updateData.name,
               semester: updateData.semester,
               schedules: updateData.schedules,
             },
-          },
-        }
-      )),
-      //update student
-      updateStudent.length > 0 &&
-      (await User.updateMany(
-        {
-          email: { $in: updateStudent },
-          "classes.id": req.body.id,
-        },
-        {
-          classes: {
-            id: req.body.id,
-            name: updateData.name,
-            semester: updateData.semester,
-            schedules: updateData.schedules,
-          },
-        }
-      )),
+          }
+        )),
       removeStudent.length > 0 &&
-      (await User.updateMany(
-        {
-          email: {
-            $in:
-              // removeStudent.map((student: any) => student.email)
-              removeStudent,
-          },
-        },
-        {
-          $pull: {
-            classes: {
-              id: req.body.id,
+        (await User.updateMany(
+          {
+            email: {
+              $in:
+                // removeStudent.map((student: any) => student.email)
+                removeStudent,
             },
           },
-        },
-        {
-          upsert: false,
-          multi: true,
-        }
-      )),
+          {
+            $pull: {
+              classes: {
+                id: req.body.id,
+              },
+            },
+          },
+          {
+            upsert: false,
+            multi: true,
+          }
+        )),
       await Class.updateOne(
         {
           _id: req.body.id,

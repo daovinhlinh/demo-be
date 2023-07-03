@@ -16,30 +16,50 @@ const handleStopAttendance = async (
   classId: string
 ) => {
   try {
-    const attendance = await Attendance.findOneAndUpdate(
+    const attendanceData = await Attendance.findOne({
+      classId: classId,
+      status: Attendance.STATUS.IN_PROGRESS,
+    });
+
+    if (attendanceData) {
+      attendanceData.status = Attendance.STATUS.FINISHED;
+    }
+
+    const classData = await Class.findOne({ _id: classId });
+    classData.students.forEach((student: any) => {
+      if (!attendanceData.students.includes(student.id)) {
+        student.lateCount++;
+      }
+    });
+
+    await Class.findByIdAndUpdate(classId, classData, {
+      new: true,
+    });
+
+    console.log("attendance data", attendanceData);
+
+    await Attendance.findOneAndUpdate(
       {
         classId: classId,
         status: Attendance.STATUS.IN_PROGRESS,
       },
+      attendanceData,
       {
-        status: Attendance.STATUS.FINISHED,
+        new: true,
       }
     );
-    console.log("attendance", attendance);
-    const pushNoti = await pushNotification(
-      "Attendance",
-      "Attendance session has ended",
-      {
-        key: classId,
-        value: true,
-      }
-    );
-    console.log(pushNoti);
+
+    // await attendanceData.save();
+    clearTimeout(timerId);
     io.emit(`stopAttendance_${classId}`, {
       success: true,
       // data: attendance
     });
-    clearTimeout(timerId);
+
+    await pushNotification("Attendance", "Attendance session has ended", {
+      key: classId,
+      value: true,
+    });
   } catch (e) {
     socket.emit(`stopAttendance_${classId}`, {
       success: false,
@@ -135,15 +155,32 @@ const socketHandler = (io: Server) => {
         //Cheeck if today have absence request
         const today = Date.now();
         const students = [];
-        if (classData.absenceRequests[dayjs(today).format('DDMMYYYY')]) {
-          students.push(classData[dayjs(today).format('DDMMYYYY')])
+        if (classData.absenceRequests[dayjs(today).format("DDMMYYYY")]) {
+          students.push(
+            ...classData.absenceRequests[dayjs(today).format("DDMMYYYY")]
+          );
+
+          classData.students.forEach((student: any) => {
+            //if student in today absence request -> increse checkin count
+            console.log(student);
+
+            classData.absenceRequests[dayjs(today).format("DDMMYYYY")].forEach(
+              (absenceStudent: any) => {
+                if (student.id.equals(absenceStudent)) {
+                  student.presentCount++;
+                }
+              }
+            );
+          });
+
+          await classData.save();
         }
 
         const newAttendance = {
           classId: classId,
           startTime: Date.now(),
           endTime: Date.now() + time * 60 * 1000,
-          students: students,
+          students,
           status: "IN_PROGRESS",
           wifi: wifi,
         };

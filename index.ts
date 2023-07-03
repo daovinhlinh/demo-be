@@ -5,8 +5,8 @@ import socketHandler from "./socket/socketHandler";
 
 const express = require("express");
 const dotenv = require("dotenv");
-const { Server } = require('socket.io')
-const { createServer } = require('http')
+const { Server } = require("socket.io");
+const { createServer } = require("http");
 dotenv.config();
 require("./config/db");
 
@@ -31,25 +31,27 @@ const userRouter = require("./routers/user");
 const imageRouter = require("./routers/image");
 const uploadRouter = require("./routers/upload");
 const classRouter = require("./routers/class");
+const announcementRouter = require("./routers/announcement");
 
 const app = express();
 const port = process.env.PORT;
-const httpServer = createServer(app)
+const httpServer = createServer(app);
 
 export const io = new Server(httpServer, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
-})
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.resolve(__dirname, 'public')));
+app.use(express.static(path.resolve(__dirname, "public")));
 app.use("/user", userRouter);
+app.use("/announcement", announcementRouter);
 app.use("/image", imageRouter);
-app.use('/upload', uploadRouter)
-app.use('/class', classRouter)
+app.use("/upload", uploadRouter);
+app.use("/class", classRouter);
 // app.use('/',)
 
 app.get("/", (req: Request, res: Response) => {
@@ -62,9 +64,11 @@ app.listen(port, () => {
 
 httpServer.listen(process.env.SOCKET_PORT, () => {
   try {
-    console.log(`[server]: Socket is running at https://localhost:${process.env.SOCKET_PORT}`);
+    console.log(
+      `[server]: Socket is running at https://localhost:${process.env.SOCKET_PORT}`
+    );
     socketHandler(io);
   } catch (e) {
     console.log(e);
   }
-})
+});
