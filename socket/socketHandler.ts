@@ -236,9 +236,11 @@ const socketHandler = (io: Server) => {
           error: "Student is already checked in",
         });
       } else {
+        console.log(attendance.wifi, wifi)
         if (hasMatchingElement(attendance.wifi, wifi)) {
           attendance.students.push(new mongoose.Types.ObjectId(studentId));
           await attendance.save();
+
           return io.to(socket.id).emit(`checkin`, {
             success: true,
             message: "Check-in successfully",

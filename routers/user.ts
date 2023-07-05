@@ -11,13 +11,18 @@ const router = express.Router();
 router.post("/register", async (req: Request, res: Response) => {
   // Create a new user
   try {
+    console.log('requ', req.body)
     const isExisted = await User.findOne({ email: req.body.email });
     if (isExisted) {
+      console.log('existed');
+
       return res.status(400).send("User already registered");
     }
 
     if (req.body.role === User.ROLES.USER) {
       if (!req.body.studentId) {
+        console.log('missing');
+
         return res.status(400).send("Missing studentId");
       }
 
@@ -25,9 +30,13 @@ router.post("/register", async (req: Request, res: Response) => {
         studentId: req.body.studentId,
       });
       if (isExistedStudentId) {
+        console.log('existed studentId');
+
         return res.status(400).send("StudentId already registered");
       }
     } else if (req.body.studentId) {
+      console.log('studentId is only for user');
+
       return res.status(400).send("StudentId is only for user");
     }
 
@@ -35,9 +44,10 @@ router.post("/register", async (req: Request, res: Response) => {
       ...req.body,
       role: req.body.role ? req.body.role : User.ROLES.USER,
     });
-    const token = await user.generateAuthToken();
-    res.status(201).send({ user, token });
+    user.save();
+    res.status(201).send(user);
   } catch (error) {
+    console.log(error);
     res.status(400).send(error);
   }
 });

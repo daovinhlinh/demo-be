@@ -37,7 +37,8 @@ const auth = async (req: any, res: Response, next: NextFunction) => {
         });
         // throw new Error();
       }
-
+      //delete password
+      delete user.password;
       req.token = token;
       req.user = user;
       next();
