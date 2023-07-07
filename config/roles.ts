@@ -7,8 +7,13 @@ const roles = () => {
       .readOwn('profile')
       .updateOwn('profile');
 
-   ac.grant('admin')
+   ac.grant('lecturer')
       .extend('user')
+      .readOwn('class')
+      .updateOwn('class');
+
+   ac.grant('admin')
+      .extend('lecturer')
       .readAny('profile')
       .updateAny('profile')
       .deleteAny('profile')
@@ -17,11 +22,6 @@ const roles = () => {
       .deleteAny('class')
       .createAny('class')
       ;
-
-   ac.grant('lecturer')
-      .extend('user')
-      .readOwn('class')
-      .updateOwn('class');
 };
 
 roles()

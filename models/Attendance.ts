@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const STATUS = {
   IN_PROGRESS: "IN_PROGRESS",
   FINISHED: "FINISHED",
+  CANCEL: "CANCEL",
 };
 
 const attendanceSchema = mongoose.Schema({

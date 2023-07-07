@@ -206,15 +206,27 @@ router.get("/userInfo", auth, async (req: any, res: Response) => {
 
 router.get("/:userId", auth, async (req: Request, res: Response) => {
   const userId = req.params.userId;
-  if (userId.match(/^[0-9a-fA-F]{24}$/)) {
-    // Yes, it's a valid ObjectId, proceed with `findById` call.
-    const user = await User.findById(userId);
+  const findBy = req.query.findBy;
+  console.log(req.params)
+  if (findBy === "studentId") {
+    const user = await User.findOne({ studentId: userId });
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
     return res.status(200).json({
       user: user,
     });
+  } else {
+    if (userId.match(/^[0-9a-fA-F]{24}$/)) {
+      // Yes, it's a valid ObjectId, proceed with `findById` call.
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).send({ error: "User not found" });
+      }
+      return res.status(200).json({
+        user: user,
+      });
+    }
   }
 
   return res.status(400).send({

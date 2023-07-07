@@ -126,125 +126,32 @@ router.post(
   auth,
   userController.grantAccess("updateOwn", "class"),
   async (req: any, res: Response) => {
-    const session: ClientSession = await mongoose.startSession();
+    try {
+      const classData = await Class.findOne({
+        _id: req.body.id,
+      });
 
-    const emailList = req.body.data.students.map(
-      (student: any) => student.email
-    );
-    const updateData = req.body.data;
-    const classData = await Class.findOne({
-      _id: req.body.id,
-    });
+      if (!classData) {
+        return res.status(401).send({
+          message: "Class not found",
+        });
+      }
 
-    if (!classData) {
+      await Class.updateOne({
+        _id: req.body.id,
+      }, {
+        $set: req.body.data
+      })
+
+      return res.status(200).send({
+        message: "Update class successfully",
+      });
+
+    } catch (err) {
       return res.status(401).send({
-        message: "Class not found",
+        message: "Cannot update class",
       });
     }
-
-    let tempStudent: string[] = []; //Contain new and remove student
-    let updateStudent: string[] = [];
-    classData.students.map((student: any) => {
-      if (emailList.includes(student.email)) {
-        updateStudent.push(student.email);
-      } else {
-        tempStudent.push(student.email);
-      }
-    });
-
-    let addStudent = emailList.filter(
-      (email: string) => !updateStudent.includes(email)
-    );
-    let removeStudent = classData.students.filter((student: any) =>
-      tempStudent.includes(student.email)
-    );
-
-    console.log(addStudent);
-    console.log(removeStudent);
-    console.log(updateStudent);
-
-    //handle việc update lỗi 1 trong các bước thì rollback lại
-    session.startTransaction();
-    Promise.all([
-      addStudent.length > 0 &&
-        (await User.updateMany(
-          {
-            email: { $in: addStudent },
-          },
-          {
-            $set: {
-              classes: {
-                id: req.body.id,
-                name: updateData.name,
-                semester: updateData.semester,
-                schedules: updateData.schedules,
-              },
-            },
-          }
-        )),
-      //update student
-      updateStudent.length > 0 &&
-        (await User.updateMany(
-          {
-            email: { $in: updateStudent },
-            "classes.id": req.body.id,
-          },
-          {
-            classes: {
-              id: req.body.id,
-              name: updateData.name,
-              semester: updateData.semester,
-              schedules: updateData.schedules,
-            },
-          }
-        )),
-      removeStudent.length > 0 &&
-        (await User.updateMany(
-          {
-            email: {
-              $in:
-                // removeStudent.map((student: any) => student.email)
-                removeStudent,
-            },
-          },
-          {
-            $pull: {
-              classes: {
-                id: req.body.id,
-              },
-            },
-          },
-          {
-            upsert: false,
-            multi: true,
-          }
-        )),
-      await Class.updateOne(
-        {
-          _id: req.body.id,
-          ...(req.user.role === User.ROLES.LECTURER && {
-            "lecturer.email": req.user.email,
-          }),
-        },
-        {
-          $set: updateData,
-        }
-      ),
-    ])
-      .then(() => {
-        session.commitTransaction();
-        return res.status(200).send("Update class successfully");
-      })
-      .catch((err) => {
-        console.log("errror", err);
-        session.abortTransaction();
-        return res.status(401).send({
-          message: "Cannot update class",
-        });
-      })
-      .finally(() => {
-        session.endSession();
-      });
   }
 );
 

@@ -120,7 +120,7 @@ const getAttendanceHistory = async (req: Request, res: Response) => {
 
     const attendance = await Attendance.find({
       classId: req.query.classId,
-    });
+    }).sort({ createdAt: 1 });
 
     return res.status(200).send(attendance);
   } catch (error) {
@@ -222,8 +222,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-        ? { day: new Date().getDay, semester: req.query.semester }
-        : {}),
+          ? { day: new Date().getDay, semester: req.query.semester }
+          : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {

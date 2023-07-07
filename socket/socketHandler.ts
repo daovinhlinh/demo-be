@@ -3,7 +3,7 @@ import { Socket } from "socket.io/dist/socket";
 import { io } from "..";
 import { convertArrayDocsToObject, hasMatchingElement } from "../commons";
 import { pushNotification } from "../config/notification";
-import mongoose from "mongoose";
+import mongoose, { ObjectId } from "mongoose";
 import dayjs from "dayjs";
 
 const Attendance = require("../models/Attendance");
@@ -27,10 +27,24 @@ const handleStopAttendance = async (
 
     const classData = await Class.findOne({ _id: classId });
     classData.students.forEach((student: any) => {
-      if (!attendanceData.students.includes(student.id)) {
+      if (!attendanceData.students.some((id: any) => id.equals(student.id))) {
         student.lateCount++;
+      } else {
+        //Check if today have absence request and user is not in absence request or today not have absence request
+        student.presentCount++;
+        if (
+          classData.absenceRequests[dayjs(Date.now()).format("DDMMYYYY")] &&
+          classData.absenceRequests[dayjs(Date.now()).format("DDMMYYYY")].some((id: any) => id.equals(student.id))
+        ) {
+          student.absentRequestCount++;
+        }
       }
-    });
+
+
+    })
+    // await classData.save();
+
+
 
     await Class.findByIdAndUpdate(classId, classData, {
       new: true,
@@ -110,10 +124,6 @@ const socketHandler = (io: Server) => {
             role: User.ROLES.USER,
           });
 
-          console.log(
-            "`updateAttendance_${updatedAttendance._id}`",
-            `updateAttendance_${updatedAttendance._id}`
-          );
           socket.emit(`updateAttendance_${updatedAttendance._id}`, {
             success: true,
             data: {
@@ -160,20 +170,20 @@ const socketHandler = (io: Server) => {
             ...classData.absenceRequests[dayjs(today).format("DDMMYYYY")]
           );
 
-          classData.students.forEach((student: any) => {
-            //if student in today absence request -> increse checkin count
-            console.log(student);
+          // classData.students.forEach((student: any) => {
+          //   //if student in today absence request -> increse checkin count
+          //   console.log(student);
 
-            classData.absenceRequests[dayjs(today).format("DDMMYYYY")].forEach(
-              (absenceStudent: any) => {
-                if (student.id.equals(absenceStudent)) {
-                  student.presentCount++;
-                }
-              }
-            );
-          });
+          //   classData.absenceRequests[dayjs(today).format("DDMMYYYY")].forEach(
+          //     (absenceStudent: any) => {
+          //       if (student.id.equals(absenceStudent)) {
+          //         student.presentCount++;
+          //       }
+          //     }
+          //   );
+          // });
 
-          await classData.save();
+          // await classData.save();
         }
 
         const newAttendance = {
@@ -218,7 +228,24 @@ const socketHandler = (io: Server) => {
     });
 
     socket.on("stopAttendance", async (classId: string) => {
-      handleStopAttendance(socket, timer, classId);
+      try {
+        clearTimeout(timer);
+        await Attendance.findOneAndUpdate(
+          {
+            classId: classId,
+            status: Attendance.STATUS.IN_PROGRESS,
+          },
+          {
+            status: Attendance.STATUS.CANCEL,
+          },
+          {
+            new: true,
+          }
+        );
+      } catch (e) {
+        console.log(e)
+      }
+      // handleStopAttendance(socket, timer, classId);
     });
 
     socket.on("checkin", async (data: any) => {
