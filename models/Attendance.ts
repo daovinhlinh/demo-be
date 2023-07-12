@@ -38,6 +38,11 @@ const attendanceSchema = mongoose.Schema({
     enum: ["IN_PROGRESS", "FINISHED"],
     required: true,
   },
+  deviceList: {
+    type: Array,
+    required: true,
+    default: []
+  }
 });
 
 const Attendance = mongoose.model("Attendance", attendanceSchema);

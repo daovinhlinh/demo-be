@@ -178,6 +178,11 @@ router.get(
   auth,
   classController.getAbsenceRequest
 );
+router.get(
+  "/attendance/getNoticeCount/:classId",
+  auth,
+  classController.getNoticeCount
+);
 
 router.get(
   "/attendance/:attendanceId",

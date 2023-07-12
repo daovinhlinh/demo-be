@@ -34,17 +34,15 @@ const handleStopAttendance = async (
         student.presentCount++;
         if (
           classData.absenceRequests[dayjs(Date.now()).format("DDMMYYYY")] &&
-          classData.absenceRequests[dayjs(Date.now()).format("DDMMYYYY")].some((id: any) => id.equals(student.id))
+          classData.absenceRequests[dayjs(Date.now()).format("DDMMYYYY")].some(
+            (id: any) => id.equals(student.id)
+          )
         ) {
           student.absentRequestCount++;
         }
       }
-
-
-    })
+    });
     // await classData.save();
-
-
 
     await Class.findByIdAndUpdate(classId, classData, {
       new: true,
@@ -242,14 +240,19 @@ const socketHandler = (io: Server) => {
             new: true,
           }
         );
+
+        io.emit(`stopAttendance_${classId}`, {
+          success: true,
+          message: "Attendance has cancel",
+        });
       } catch (e) {
-        console.log(e)
+        console.log(e);
       }
       // handleStopAttendance(socket, timer, classId);
     });
 
     socket.on("checkin", async (data: any) => {
-      const { studentId, classId, wifi } = data;
+      const { studentId, classId, wifi, uuid } = data;
       console.log(data);
 
       const attendance = await Attendance.findOne({
@@ -262,10 +265,16 @@ const socketHandler = (io: Server) => {
           success: false,
           error: "Student is already checked in",
         });
+      } else if (attendance.deviceList.includes(uuid)) {
+        return io.to(socket.id).emit(`checkin`, {
+          success: false,
+          error: "Device is already used",
+        });
       } else {
-        console.log(attendance.wifi, wifi)
+        console.log(attendance.wifi, wifi);
         if (hasMatchingElement(attendance.wifi, wifi)) {
           attendance.students.push(new mongoose.Types.ObjectId(studentId));
+          attendance.deviceList.push(uuid);
           await attendance.save();
 
           return io.to(socket.id).emit(`checkin`, {
