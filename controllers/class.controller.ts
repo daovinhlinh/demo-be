@@ -233,8 +233,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-          ? { day: new Date().getDay, semester: req.query.semester }
-          : {}),
+        ? { day: new Date().getDay, semester: req.query.semester }
+        : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
@@ -254,7 +254,7 @@ const updateAttendance = async (req: Request, res: Response) => {
     });
     if (attendance) {
       //update student from checkin to missed or vice versa
-
+      //check finish
       //Update miss to checked in
       if (req.body.status === 1) {
         //find class and increase student checkin count and decrease miss count
@@ -439,26 +439,23 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
             }
           });
 
-          const completedAttendance = await Attendance.find(
-            {
-              classId: request.classId,
-              startTime: {
-                $gte: dayjs(request.date).startOf("day").toDate(),
-                $lte: dayjs(request.date).endOf("day").toDate(),
-              },
-              status: Attendance.STATUS.FINISHED,
-            }
-          );
+          const completedAttendance = await Attendance.find({
+            classId: request.classId,
+            startTime: {
+              $gte: dayjs(request.date).startOf("day").toDate(),
+              $lte: dayjs(request.date).endOf("day").toDate(),
+            },
+            status: Attendance.STATUS.FINISHED,
+          });
 
           if (completedAttendance.length > 0) {
             classData.students.forEach((student: any) => {
               if (student.id.equals(request.studentId)) {
                 student.absentCount += completedAttendance.length;
               }
-            }
-            )
+            });
           }
-          console.log("completedAttendance", completedAttendance)
+          console.log("completedAttendance", completedAttendance);
           const requestDate = dayjs(request.date).format("DDMMYYYY");
           if (
             classData.absenceRequests &&
@@ -496,17 +493,18 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
             new: true,
           });
         } else if (req.body.status === AbsenceRequest.STATUS.REJECTED) {
-          await AbsenceRequest.updateOne({
-            _id: req.body.requestId,
-          },
+          await AbsenceRequest.updateOne(
             {
-              status: AbsenceRequest.STATUS.APPROVED
+              _id: req.body.requestId,
+            },
+            {
+              status: AbsenceRequest.STATUS.APPROVED,
             }
-          )
-        } else if (req.body.status === 'DELETE') {
+          );
+        } else if (req.body.status === "DELETE") {
           await AbsenceRequest.deleteOne({
             _id: req.body.requestId,
-          })
+          });
         }
       } catch (error) {
         console.log("error", error);
@@ -559,7 +557,7 @@ const getNoticeCount = async (req: any, res: Response) => {
       message: "Cannot get notice count",
     });
   }
-}
+};
 
 module.exports = {
   getClassList,
@@ -572,5 +570,5 @@ module.exports = {
   addAbsenceRequest,
   getAbsenceRequest,
   updateAbsenceRequest,
-  getNoticeCount
+  getNoticeCount,
 };

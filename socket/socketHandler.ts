@@ -44,11 +44,11 @@ const handleStopAttendance = async (
     });
     // await classData.save();
 
-    await Class.findByIdAndUpdate(classId, classData, {
+    const newClassData = await Class.findByIdAndUpdate(classId, classData, {
       new: true,
     });
 
-    console.log("attendance data", attendanceData);
+    console.log("attendance data", newClassData);
 
     await Attendance.findOneAndUpdate(
       {
@@ -68,10 +68,12 @@ const handleStopAttendance = async (
       // data: attendance
     });
 
-    await pushNotification("Attendance", "Attendance session has ended", {
-      key: classId,
-      value: true,
-    });
+    await pushNotification("Attendance", "Attendance session has ended", classData.classId
+      // {
+      //   key: classId,
+      //   value: true,
+      // }
+    );
   } catch (e) {
     socket.emit(`stopAttendance_${classId}`, {
       success: false,
@@ -194,17 +196,12 @@ const socketHandler = (io: Server) => {
         };
         const pushNoti = await pushNotification(
           "New attendance session",
-          "Class has start attendance",
+          `Class ${classData.name} has start attendance`,
+          classData.classId,
           {
-            key: classId,
-            value: true,
-          },
-          {
-            deeplink: {
-              screen: "Class",
-              data: {
-                id: classId,
-              },
+            screen: "Class",
+            data: {
+              id: classId,
             },
           }
         );
