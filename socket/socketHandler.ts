@@ -117,9 +117,22 @@ const socketHandler = (io: Server) => {
             role: User.ROLES.USER,
           });
 
+          const classData = await Class.findOne({
+            _id: updatedAttendance.classId,
+          });
+
+          const uncheckList = classData.students.filter(
+            (student: any) =>
+              !updatedAttendance.students.some((id: any) =>
+                id.equals(student.id)
+              )
+          );
+          console.log('uncheckList', uncheckList);
+
+
           const uncheckStudents = await User.find({
             _id: {
-              $nin: updatedAttendance.students,
+              $in: uncheckList.map((item: any) => item.id),
             },
             role: User.ROLES.USER,
           });
@@ -207,11 +220,18 @@ const socketHandler = (io: Server) => {
         );
 
         await new Attendance(newAttendance).save();
+        console.log('emit start');
 
         io.emit(`startAttendance_${classId}`, {
           success: true,
           data: newAttendance,
         });
+
+        io.to(socket.id).emit(`startAttendance`, {
+          success: true,
+          data: newAttendance,
+        });
+
         timer = setTimeout(() => {
           handleStopAttendance(socket, timer, classId);
         }, time * 60 * 1000);
@@ -224,6 +244,10 @@ const socketHandler = (io: Server) => {
 
     socket.on("stopAttendance", async (classId: string) => {
       try {
+        const classData = await Class.findOne({
+          _id: classId,
+        })
+
         clearTimeout(timer);
         await Attendance.findOneAndUpdate(
           {
@@ -237,6 +261,9 @@ const socketHandler = (io: Server) => {
             new: true,
           }
         );
+
+        pushNotification('Attendance', `Class ${classData.name} attendance session has been cancel`, classData.classId)
+        console.log(`stopAttendance_${classId}`);
 
         io.emit(`stopAttendance_${classId}`, {
           success: true,
@@ -257,32 +284,34 @@ const socketHandler = (io: Server) => {
         status: Attendance.STATUS.IN_PROGRESS,
       });
 
-      if (attendance.students.includes(studentId)) {
-        return io.to(socket.id).emit(`checkin`, {
-          success: false,
-          error: "Student is already checked in",
-        });
-      } else if (attendance.deviceList.includes(uuid)) {
-        return io.to(socket.id).emit(`checkin`, {
-          success: false,
-          error: "Device is already used",
-        });
-      } else {
-        console.log(attendance.wifi, wifi);
-        if (hasMatchingElement(attendance.wifi, wifi)) {
-          attendance.students.push(new mongoose.Types.ObjectId(studentId));
-          attendance.deviceList.push(uuid);
-          await attendance.save();
-
-          return io.to(socket.id).emit(`checkin`, {
-            success: true,
-            message: "Check-in successfully",
-          });
-        } else {
+      if (attendance) {
+        if (attendance.students && attendance.students.includes(studentId)) {
           return io.to(socket.id).emit(`checkin`, {
             success: false,
-            message: "Check-in failed because of wrong wifi",
+            error: "Student is already checked in",
           });
+        } else if (attendance.deviceList.includes(uuid)) {
+          return io.to(socket.id).emit(`checkin`, {
+            success: false,
+            error: "Device is already used",
+          });
+        } else {
+          console.log(attendance.wifi, wifi);
+          if (hasMatchingElement(attendance.wifi, wifi)) {
+            attendance.students.push(new mongoose.Types.ObjectId(studentId));
+            attendance.deviceList.push(uuid);
+            await attendance.save();
+
+            return io.to(socket.id).emit(`checkin`, {
+              success: true,
+              message: "Check-in successfully",
+            });
+          } else {
+            return io.to(socket.id).emit(`checkin`, {
+              success: false,
+              message: "Check-in failed because of wrong wifi",
+            });
+          }
         }
       }
     });

@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
+import { pushNotification } from "../config/notification";
 
 const Class = require("../models/Class");
 const Attendance = require("../models/Attendance");
@@ -233,8 +234,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-        ? { day: new Date().getDay, semester: req.query.semester }
-        : {}),
+          ? { day: new Date().getDay, semester: req.query.semester }
+          : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
@@ -319,6 +320,7 @@ const addAbsenceRequest = async (req: any, res: Response) => {
       "students.id": req.user._id,
     });
 
+
     console.log("classData", classData);
 
     //Check if student is in class
@@ -337,6 +339,7 @@ const addAbsenceRequest = async (req: any, res: Response) => {
         $gte: dayjs(req.body.date).startOf("day").toDate(),
         $lte: dayjs(req.body.date).endOf("day").toDate(),
       },
+      status: AbsenceRequest.STATUS.PENDING,
     });
 
     if (request) {
@@ -345,6 +348,10 @@ const addAbsenceRequest = async (req: any, res: Response) => {
         message: "You have already requested",
       });
     }
+
+    const lecturer = await User.findOne({
+      email: classData.lecturer.email,
+    })
 
     const newRequest = new AbsenceRequest({
       classId: req.body.classId,
@@ -355,6 +362,14 @@ const addAbsenceRequest = async (req: any, res: Response) => {
     console.log("newRequest", newRequest);
 
     await newRequest.save();
+    console.log(lecturer);
+
+    pushNotification('New absence request', `You have a new absence request in class ${classData.name}`, lecturer._id, {
+      screen: 'AbsenceList',
+      data: {
+        id: classData._id,
+      }
+    })
 
     return res.status(200).send({
       success: true,
@@ -488,7 +503,7 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
           );
 
           console.log("attendances", attendances);
-
+          pushNotification('Absence request approved', `Your absence request in class ${classData.name} has been approved`, request.studentId)
           await Class.findByIdAndUpdate(classData._id, classData, {
             new: true,
           });
@@ -501,6 +516,7 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
               status: AbsenceRequest.STATUS.APPROVED,
             }
           );
+          pushNotification('Absence request rejected', `Your absence request in class ${classData.name} has been rejected`, request.studentId)
         } else if (req.body.status === "DELETE") {
           await AbsenceRequest.deleteOne({
             _id: req.body.requestId,

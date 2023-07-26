@@ -28,7 +28,7 @@ export const pushNotification = async (title: string, body: string, tag: any, da
   //     data
   //   })
   // });
-  console.log(tag
+  console.log(tag.toString()
   );
 
   const result = await getMessaging().sendToTopic(tag.toString(), {
@@ -36,9 +36,11 @@ export const pushNotification = async (title: string, body: string, tag: any, da
       title,
       body,
     },
-    data: {
-      deeplink: JSON.stringify(data)
-    }
+    ...(data && {
+      data: {
+        deeplink: JSON.stringify(data)
+      }
+    })
   })
 
   console.log(result);
