@@ -99,7 +99,7 @@ const socketHandler = (io: Server) => {
 
       const updatedAttendance = await Attendance.findOne({
         _id: change.documentKey._id,
-      });
+      }).lean();
       console.log("updatedAttendance", updatedAttendance);
 
       if (change.operationType == "update") {
@@ -139,10 +139,12 @@ const socketHandler = (io: Server) => {
 
           socket.emit(`updateAttendance_${updatedAttendance._id}`, {
             success: true,
-            data: {
+            data:
+            {
+              ...updatedAttendance,
               checkinStudent: students,
               uncheckStudent: uncheckStudents,
-            },
+            }
           });
         } catch (e) {
           console.log(e);

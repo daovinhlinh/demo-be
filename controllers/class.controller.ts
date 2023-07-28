@@ -270,7 +270,7 @@ const updateAttendance = async (req: Request, res: Response) => {
             student.presentCount += 1;
           }
         });
-
+        classData.save();
         attendance.students.push(
           new mongoose.Types.ObjectId(req.body.studentId)
         );
@@ -292,6 +292,7 @@ const updateAttendance = async (req: Request, res: Response) => {
         attendance.students = attendance.students.filter(
           (el: any) => !el.equals(req.body.studentId)
         );
+        classData.save();
       }
 
       await attendance.save();
@@ -306,6 +307,8 @@ const updateAttendance = async (req: Request, res: Response) => {
       message: "Cannot find attendance",
     });
   } catch (error) {
+    console.log(error);
+
     return res.status(401).send({
       success: false,
       message: "Cannot update attendance",
