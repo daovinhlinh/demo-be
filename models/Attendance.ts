@@ -35,7 +35,7 @@ const attendanceSchema = mongoose.Schema({
   ],
   status: {
     type: String,
-    enum: ["IN_PROGRESS", "FINISHED"],
+    enum: ["IN_PROGRESS", "FINISHED", "CANCEL"],
     required: true,
   },
   deviceList: {
