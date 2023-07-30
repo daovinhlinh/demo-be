@@ -5,23 +5,48 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const userController = require("../controllers/user.controller");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
 
 const router = express.Router();
+
+router.post("/resetPassword", async (req: Request, res: Response) => {
+  const testAccount = await nodemailer.createTestAccount();
+
+  const transporter = nodemailer.createTransport({
+    host: "smtp.ethereal.email",
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+      // TODO: replace `user` and `pass` values from <https://forwardemail.net>
+      user: testAccount.user,
+      pass: testAccount.pass,
+    },
+  });
+
+  const info = await transporter.sendMail({
+    from: '"Fred Foo 👻" <foo@example.com>', // sender address
+    to: "linh142000@gmail.com", // list of receivers
+    subject: "Hello ✔", // Subject line
+    text: "Hello world?", // plain text body
+    html: "<b>Hello world?</b>", // html body
+  });
+  console.log("Message sent: %s", info.messageId);
+});
 
 router.post("/register", async (req: Request, res: Response) => {
   // Create a new user
   try {
-    console.log('requ', req.body)
+    console.log("requ", req.body);
     const isExisted = await User.findOne({ email: req.body.email });
     if (isExisted) {
-      console.log('existed');
+      console.log("existed");
 
       return res.status(400).send("User already registered");
     }
 
     if (req.body.role === User.ROLES.USER) {
       if (!req.body.studentId) {
-        console.log('missing');
+        console.log("missing");
 
         return res.status(400).send("Missing studentId");
       }
@@ -30,12 +55,12 @@ router.post("/register", async (req: Request, res: Response) => {
         studentId: req.body.studentId,
       });
       if (isExistedStudentId) {
-        console.log('existed studentId');
+        console.log("existed studentId");
 
         return res.status(400).send("StudentId already registered");
       }
     } else if (req.body.studentId) {
-      console.log('studentId is only for user');
+      console.log("studentId is only for user");
 
       return res.status(400).send("StudentId is only for user");
     }
@@ -207,7 +232,7 @@ router.get("/userInfo", auth, async (req: any, res: Response) => {
 router.get("/:userId", auth, async (req: Request, res: Response) => {
   const userId = req.params.userId;
   const findBy = req.query.findBy;
-  console.log(req.params)
+  console.log(req.params);
   if (findBy === "studentId") {
     const user = await User.findOne({ studentId: userId });
     if (!user) {

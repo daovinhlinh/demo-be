@@ -5,6 +5,7 @@ import socketHandler from "./socket/socketHandler";
 import { applicationDefault, initializeApp } from "firebase-admin/app";
 import cors from "cors";
 import { getMessaging } from "firebase-admin/messaging";
+require("express-async-errors");
 
 const express = require("express");
 const dotenv = require("dotenv");
@@ -44,7 +45,7 @@ process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
 initializeApp({
   credential: applicationDefault(),
-  projectId: 'attendace-3dba7',
+  projectId: "attendace-3dba7",
 });
 
 export const io = new Server(httpServer, {
@@ -76,9 +77,10 @@ app.post("/send", function (req: any, res: any) {
   const message = {
     notification: {
       title: "Notif",
-      body: 'This is a Test Notification'
+      body: "This is a Test Notification",
     },
-    token: 'AAAADNR1ETE:APA91bFbyDIQh9ccJRsoRnpBYg3b27DpFY1slLDyuSFa5_KvtZqeCN5Y6yFcxzju1MaqX7jMblQs-gX4EEuh_7t-z6HHpX95-rDF7FyZs96p8NyBl3tGoYEvntTJ5HoLnMzYZq9dplG0',
+    token:
+      "AAAADNR1ETE:APA91bFbyDIQh9ccJRsoRnpBYg3b27DpFY1slLDyuSFa5_KvtZqeCN5Y6yFcxzju1MaqX7jMblQs-gX4EEuh_7t-z6HHpX95-rDF7FyZs96p8NyBl3tGoYEvntTJ5HoLnMzYZq9dplG0",
   };
 
   // getMessaging()
@@ -96,29 +98,30 @@ app.post("/send", function (req: any, res: any) {
   //     console.log("Error sending message:", error);
   //   });
 
-  getMessaging().sendToTopic('all', {
-    data: {
-      title: 'Notif',
-      body: 'This is a Test Notification'
-    },
-    notification: {
-      title: 'Basic Notification',
-      body: 'This is a basic notification sent from the server!',
-      imageUrl: 'https://my-cdn.com/app-logo.png',
-    }
-  }).then((response) => {
-    console.log('Successfully sent message:', response);
-    res.status(200).json({
-      message: "Successfully sent message",
-      // token: receivedToken,
-    });
-  })
+  getMessaging()
+    .sendToTopic("all", {
+      data: {
+        title: "Notif",
+        body: "This is a Test Notification",
+      },
+      notification: {
+        title: "Basic Notification",
+        body: "This is a basic notification sent from the server!",
+        imageUrl: "https://my-cdn.com/app-logo.png",
+      },
+    })
+    .then((response) => {
+      console.log("Successfully sent message:", response);
+      res.status(200).json({
+        message: "Successfully sent message",
+        // token: receivedToken,
+      });
+    })
     .catch((error) => {
       res.status(400);
       res.send(error);
       console.log("Error sending message:", error);
-    }
-    );
+    });
 });
 // app.use('/',)
 
