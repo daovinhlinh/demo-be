@@ -32,7 +32,6 @@ require("./config/db");
 
 //Router
 const userRouter = require("./routers/user");
-const imageRouter = require("./routers/image");
 const uploadRouter = require("./routers/upload");
 const classRouter = require("./routers/class");
 const announcementRouter = require("./routers/announcement");
@@ -66,7 +65,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.resolve(__dirname, "public")));
 app.use("/user", userRouter);
 app.use("/announcement", announcementRouter);
-app.use("/image", imageRouter);
 app.use("/upload", uploadRouter);
 app.use("/class", classRouter);
 console.log(process.env.GOOGLE_APPLICATION_CREDENTIALS);

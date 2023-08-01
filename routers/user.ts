@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { generatePassword } from "../commons";
 
 const express = require("express");
 const User = require("../models/User");
@@ -6,37 +7,78 @@ const auth = require("../middleware/auth");
 const userController = require("../controllers/user.controller");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+const bcrypt = require("bcryptjs");
 
 const router = express.Router();
 
 router.post("/resetPassword", async (req: Request, res: Response) => {
-  const testAccount = await nodemailer.createTestAccount();
+  const isExisted = await User.findOne({ email: req.body.email });
+
+  if (!isExisted) {
+    return res.status(400).send("Email is not existed");
+  }
+
+  //update new password to database
+  const plainPassword = generatePassword(8);
+  const hashedPassword = await bcrypt.hash(plainPassword, 8);
+  console.log(plainPassword, hashedPassword);
+
+  await User.updateOne(
+    {
+      email: req.body.email,
+    },
+    {
+      password: hashedPassword,
+    }
+  );
 
   const transporter = nodemailer.createTransport({
-    host: "smtp.ethereal.email",
-    port: 587,
-    secure: false, // true for 465, false for other ports
+    service: "gmail",
     auth: {
       // TODO: replace `user` and `pass` values from <https://forwardemail.net>
-      user: testAccount.user,
-      pass: testAccount.pass,
+      user: "linh142000@gmail.com",
+      pass: "xrlkjvchgjuwumko",
     },
   });
 
   const info = await transporter.sendMail({
-    from: '"Fred Foo 👻" <foo@example.com>', // sender address
-    to: "linh142000@gmail.com", // list of receivers
-    subject: "Hello ✔", // Subject line
+    from: "linh142000@gmail.com", // sender address
+    to: "linh1482000@gmail.com", // list of receivers
+    subject: "Reset password", // Subject line
     text: "Hello world?", // plain text body
-    html: "<b>Hello world?</b>", // html body
+    html: `Your new password is: <b>${plainPassword}</b>`, // html body
+  });
+
+  res.status(201).send({
+    message: "Reset password successfully",
   });
   console.log("Message sent: %s", info.messageId);
+});
+
+router.post("/changePassword", auth, async (req: any, res: Response) => {
+  const hashedPassword = await bcrypt.hash(req.body.password, 8);
+  // console.log(req.user);
+
+  //Remove old token
+  const user = await User.updateOne(
+    {
+      _id: req.user._id,
+    },
+    {
+      $set: { password: hashedPassword },
+      $unset: { token: "" },
+    }
+  );
+  console.log("new use", user);
+
+  res.status(201).send({
+    message: "Change password successfully",
+  });
 });
 
 router.post("/register", async (req: Request, res: Response) => {
   // Create a new user
   try {
-    console.log("requ", req.body);
     const isExisted = await User.findOne({ email: req.body.email });
     if (isExisted) {
       console.log("existed");
@@ -157,21 +199,7 @@ router.get("/me", auth, async (req: any, res: Response) => {
   res.send(req.user);
 });
 
-router.post("/update", auth, async (req: any, res: Response) => {
-  const update = req.body;
-
-  const updateUser = await User.findOneAndUpdate(
-    { _id: req.user._id },
-    update,
-    {
-      new: true,
-    }
-  );
-  if (!updateUser) {
-    res.status(404).send("No user found");
-  }
-  res.status(200).send(updateUser);
-});
+router.post("/update", auth, userController.updateUser);
 
 router.post("/logout", auth, async (req: any, res: Response) => {
   try {

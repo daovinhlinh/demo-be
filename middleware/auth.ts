@@ -25,10 +25,11 @@ const auth = async (req: any, res: Response, next: NextFunction) => {
           message: "Token expired!",
         });
       }
+      console.log("token", token);
 
       const user = await User.findOne({
         _id: decoded._id,
-        // "token": token,
+        token: token,
       });
 
       if (!user) {

@@ -12,7 +12,9 @@ const User = require("../models/User");
 const getClassList = async (req: any, res: Response) => {
   try {
     if (req.user.role === User.ROLES.USER) {
-      const classes = await Class.find({ "students.id": req.user._id });
+      const classes = await Class.find({
+        "students.id": req.user._id,
+      }).populate("lecturer", "name email");
       return res.status(200).send(classes);
     } else if (req.user.role === User.ROLES.LECTURER) {
       const classes = await Class.find({
@@ -45,6 +47,17 @@ const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
       {
         $lookup: {
           from: "users",
+          localField: "lecturer",
+          foreignField: "_id",
+          as: "lecturer",
+        },
+      },
+      {
+        $unwind: "$lecturer",
+      },
+      {
+        $lookup: {
+          from: "users",
           localField: "students.id",
           foreignField: "_id",
           as: "temp_students",
@@ -55,7 +68,10 @@ const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
           _id: 1,
           classId: 1,
           name: 1,
-          lecturer: 1,
+          lecturer: {
+            name: "$lecturer.name",
+            email: "$lecturer.email",
+          },
           schedules: 1,
           semester: 1,
           note: 1,
@@ -234,8 +250,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-          ? { day: new Date().getDay, semester: req.query.semester }
-          : {}),
+        ? { day: new Date().getDay, semester: req.query.semester }
+        : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
@@ -323,7 +339,6 @@ const addAbsenceRequest = async (req: any, res: Response) => {
       "students.id": req.user._id,
     });
 
-
     console.log("classData", classData);
 
     //Check if student is in class
@@ -354,7 +369,7 @@ const addAbsenceRequest = async (req: any, res: Response) => {
 
     const lecturer = await User.findOne({
       email: classData.lecturer.email,
-    })
+    });
 
     const newRequest = new AbsenceRequest({
       classId: req.body.classId,
@@ -367,12 +382,17 @@ const addAbsenceRequest = async (req: any, res: Response) => {
     await newRequest.save();
     console.log(lecturer);
 
-    pushNotification('New absence request', `You have a new absence request in class ${classData.name}`, lecturer._id, {
-      screen: 'AbsenceList',
-      data: {
-        id: classData._id,
+    pushNotification(
+      "New absence request",
+      `You have a new absence request in class ${classData.name}`,
+      lecturer._id,
+      {
+        screen: "AbsenceList",
+        data: {
+          id: classData._id,
+        },
       }
-    })
+    );
 
     return res.status(200).send({
       success: true,
@@ -506,7 +526,11 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
           );
 
           console.log("attendances", attendances);
-          pushNotification('Absence request approved', `Your absence request in class ${classData.name} has been approved`, request.studentId)
+          pushNotification(
+            "Absence request approved",
+            `Your absence request in class ${classData.name} has been approved`,
+            request.studentId
+          );
           await Class.findByIdAndUpdate(classData._id, classData, {
             new: true,
           });
@@ -519,7 +543,11 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
               status: AbsenceRequest.STATUS.APPROVED,
             }
           );
-          pushNotification('Absence request rejected', `Your absence request in class ${classData.name} has been rejected`, request.studentId)
+          pushNotification(
+            "Absence request rejected",
+            `Your absence request in class ${classData.name} has been rejected`,
+            request.studentId
+          );
         } else if (req.body.status === "DELETE") {
           await AbsenceRequest.deleteOne({
             _id: req.body.requestId,

@@ -53,14 +53,14 @@ const userSchema = mongoose.Schema(
     //     },
     //   },
     // ],
-    // token: {
-    //   type: String,
-    //   // required: true
-    // },
-    classes: {
-      type: Array,
-      default: [],
+    token: {
+      type: String,
+      // required: true
     },
+    // classes: {
+    //   type: Array,
+    //   default: [],
+    // },
     role: {
       type: String,
       default: ROLES.USER,
@@ -103,9 +103,10 @@ userSchema.methods.generateAuthToken = async function () {
     },
     process.env.REFRESH_TOKEN_SECRET
   );
+  console.log("gen new token");
 
-  // user.token = token;
-  // await user.save();
+  user.token = token;
+  await user.save();
   return {
     token,
     refreshToken,
