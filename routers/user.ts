@@ -56,7 +56,16 @@ router.post("/resetPassword", async (req: Request, res: Response) => {
 });
 
 router.post("/changePassword", auth, async (req: any, res: Response) => {
-  const hashedPassword = await bcrypt.hash(req.body.password, 8);
+  //validate current password
+  const isMatch = await bcrypt.compare(
+    req.body.currentPassword,
+    req.user.password
+  );
+  if (!isMatch) {
+    return res.status(400).send({ message: "Current password is incorrect" });
+  }
+
+  const hashedPassword = await bcrypt.hash(req.body.newPassword, 8);
   // console.log(req.user);
 
   //Remove old token
