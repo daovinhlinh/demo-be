@@ -15,7 +15,7 @@ router.post("/resetPassword", async (req: Request, res: Response) => {
   const isExisted = await User.findOne({ email: req.body.email });
 
   if (!isExisted) {
-    return res.status(400).send("Email is not existed");
+    return res.status(400).send({ message: "Email is not existed" });
   }
 
   //update new password to database

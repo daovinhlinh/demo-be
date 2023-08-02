@@ -367,9 +367,9 @@ const addAbsenceRequest = async (req: any, res: Response) => {
       });
     }
 
-    const lecturer = await User.findOne({
-      email: classData.lecturer.email,
-    });
+    // const lecturer = await User.findOne({
+    //   email: classData.lecturer.email,
+    // });
 
     const newRequest = new AbsenceRequest({
       classId: req.body.classId,
@@ -380,12 +380,11 @@ const addAbsenceRequest = async (req: any, res: Response) => {
     console.log("newRequest", newRequest);
 
     await newRequest.save();
-    console.log(lecturer);
 
     pushNotification(
       "New absence request",
       `You have a new absence request in class ${classData.name}`,
-      lecturer._id,
+      classData.lecturer,
       {
         screen: "AbsenceList",
         data: {
@@ -455,110 +454,109 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
     const request = await AbsenceRequest.findOne({
       _id: req.body.requestId,
     });
+    console.log("request", request);
 
     if (request) {
-      try {
-        const classData = await Class.findOne({
-          _id: request.classId,
-        }).lean();
+      const classData = await Class.findOne({
+        _id: request.classId,
+      }).lean();
+      console.log(classData);
 
-        if (!classData) {
-          return res.status(401).send({
-            success: false,
-            message: "Cannot find class",
-          });
-        }
+      if (!classData) {
+        return res.status(401).send({
+          success: false,
+          message: "Cannot find class",
+        });
+      }
+      console.log(req.body.status);
 
-        if (req.body.status === AbsenceRequest.STATUS.APPROVED) {
-          //Update student absence count
+      if (req.body.status === AbsenceRequest.STATUS.APPROVED) {
+        //Update student absence count
+        classData.students.forEach((student: any) => {
+          if (student.id.equals(request.studentId)) {
+            student.absentRequestCount += 1;
+          }
+        });
+
+        const completedAttendance = await Attendance.find({
+          classId: request.classId,
+          startTime: {
+            $gte: dayjs(request.date).startOf("day").toDate(),
+            $lte: dayjs(request.date).endOf("day").toDate(),
+          },
+          status: Attendance.STATUS.FINISHED,
+        });
+
+        if (completedAttendance.length > 0) {
           classData.students.forEach((student: any) => {
             if (student.id.equals(request.studentId)) {
-              student.absentRequestCount += 1;
+              student.absentCount += completedAttendance.length;
             }
           });
+        }
+        console.log("completedAttendance", completedAttendance);
+        const requestDate = dayjs(request.date).format("DDMMYYYY");
+        if (
+          classData.absenceRequests &&
+          classData.absenceRequests[requestDate]
+        ) {
+          if (
+            !classData.absenceRequests[requestDate].includes(request.studentId)
+          ) {
+            classData.absenceRequests[requestDate].push(request.studentId);
+          }
+        } else {
+          classData.absenceRequests[requestDate] = [request.studentId];
+        }
 
-          const completedAttendance = await Attendance.find({
+        const attendances = await Attendance.updateMany(
+          {
             classId: request.classId,
             startTime: {
               $gte: dayjs(request.date).startOf("day").toDate(),
               $lte: dayjs(request.date).endOf("day").toDate(),
             },
-            status: Attendance.STATUS.FINISHED,
-          });
-
-          if (completedAttendance.length > 0) {
-            classData.students.forEach((student: any) => {
-              if (student.id.equals(request.studentId)) {
-                student.absentCount += completedAttendance.length;
-              }
-            });
-          }
-          console.log("completedAttendance", completedAttendance);
-          const requestDate = dayjs(request.date).format("DDMMYYYY");
-          if (
-            classData.absenceRequests &&
-            classData.absenceRequests[requestDate]
-          ) {
-            if (
-              !classData.absenceRequests[requestDate].includes(
-                request.studentId
-              )
-            ) {
-              classData.absenceRequests[requestDate].push(request.studentId);
-            }
-          } else {
-            classData.absenceRequests[requestDate] = [request.studentId];
-          }
-
-          const attendances = await Attendance.updateMany(
-            {
-              classId: request.classId,
-              startTime: {
-                $gte: dayjs(request.date).startOf("day").toDate(),
-                $lte: dayjs(request.date).endOf("day").toDate(),
-              },
+          },
+          {
+            $push: {
+              students: request.studentId,
             },
-            {
-              $push: {
-                students: request.studentId,
-              },
-            }
-          );
+          }
+        );
 
-          console.log("attendances", attendances);
-          pushNotification(
-            "Absence request approved",
-            `Your absence request in class ${classData.name} has been approved`,
-            request.studentId
-          );
-          await Class.findByIdAndUpdate(classData._id, classData, {
-            new: true,
-          });
-        } else if (req.body.status === AbsenceRequest.STATUS.REJECTED) {
-          await AbsenceRequest.updateOne(
-            {
-              _id: req.body.requestId,
-            },
-            {
-              status: AbsenceRequest.STATUS.APPROVED,
-            }
-          );
-          pushNotification(
-            "Absence request rejected",
-            `Your absence request in class ${classData.name} has been rejected`,
-            request.studentId
-          );
-        } else if (req.body.status === "DELETE") {
-          await AbsenceRequest.deleteOne({
+        console.log("attendances", attendances);
+        pushNotification(
+          "Absence request approved",
+          `Your absence request in class ${classData.name} has been approved`,
+          request.studentId
+        );
+        await Class.findByIdAndUpdate(classData._id, classData, {
+          new: true,
+        });
+      } else if (req.body.status === AbsenceRequest.STATUS.REJECTED) {
+        await AbsenceRequest.updateOne(
+          {
             _id: req.body.requestId,
-          });
-        }
-      } catch (error) {
-        console.log("error", error);
+          },
+          {
+            status: AbsenceRequest.STATUS.APPROVED,
+          }
+        );
+        pushNotification(
+          "Absence request rejected",
+          `Your absence request in class ${classData.name} has been rejected`,
+          request.studentId
+        );
+      } else if (req.body.status === "DELETE") {
+        const res = await AbsenceRequest.deleteOne({
+          _id: req.body.requestId,
+          studentId: req.user._id,
+        });
+        console.log(res);
 
-        return res.status(401).send({
-          success: false,
-          message: "Cannot update absence request",
+        return res.status(200).send({
+          success: true,
+          message: "Delete absence request successfully",
         });
       }
 
@@ -576,6 +574,8 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
       message: "Cannot find absence request",
     });
   } catch (error) {
+    console.log(error);
+
     return res.status(401).send({
       success: false,
       message: "Cannot update absence request",
