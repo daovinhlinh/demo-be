@@ -153,6 +153,7 @@ const getAttendanceHistory = async (req: Request, res: Response) => {
 
     return res.status(200).send(attendance);
   } catch (error) {
+    console.log(error);
     return res.status(401).send({
       success: false,
       message: "Cannot get attendance list",
@@ -160,77 +161,70 @@ const getAttendanceHistory = async (req: Request, res: Response) => {
   }
 };
 
-const getAttendanceDetail = async (req: Request, res: Response) => {
+const getAttendanceDetail = async (req: any, res: Response) => {
   try {
-    const attendance = await Attendance.aggregate([
-      {
-        $match: {
-          _id: new mongoose.Types.ObjectId(req.params.attendanceId),
+    if (req.user.role === User.ROLES.USER) {
+      const attendance = await Attendance.findOne({
+        _id: req.params.attendanceId,
+      }).lean();
+
+      const absenceRequest = await AbsenceRequest.find({
+        studentId: req.user._id,
+        date: {
+          //check if date is same day as attendance date
+          $gte: dayjs(attendance.startTime).startOf("day").toDate(),
         },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "students",
-          foreignField: "_id",
-          as: "checkinStudent",
-        },
-      },
-      // {
-      //   $project: {
-      //     _id: 1,
-      //     classId: 1,
-      //     note: 1,
-      //     status: 1,
-      //     startTime: 1,
-      //     endTime: 1,
-      //     students: {
-      //       $map: {
-      //         input: "$temp_students",
-      //         as: "student",
-      //         in: {
-      //           $mergeObjects: [
-      //             {
-      //               $arrayElemAt: [
-      //                 {
-      //                   $filter: {
-      //                     input: "$students",
-      //                     as: "s",
-      //                     cond: { $eq: ["$$s", "$$student._id"] },
-      //                   },
-      //                 },
-      //                 0,
-      //               ],
-      //             },
-      //             "$$student",
-      //           ],
-      //         },
-      //       },
-      //     },
-      //   },
-      // },
-    ]);
+      }).lean();
 
-    const classData = await Class.findOne({
-      _id: attendance[0].classId,
-    });
-    console.log(classData);
-
-    const missStudent = classData.students.filter((student: any) => {
-      return !attendance[0].students.some((el: any) =>
-        el._id.equals(student.id)
-      );
-    });
-
-    if (missStudent.length > 0) {
-      const missStudentData = await User.find({
-        _id: { $in: missStudent.map((el: any) => el.id) },
-      });
-      return res
-        .status(200)
-        .send({ ...attendance[0], missStudent: missStudentData });
+      if (absenceRequest) {
+        return res.status(200).send({
+          ...attendance,
+          absenceRequest,
+        });
+      } else {
+        return res.status(200).send({
+          ...attendance,
+          absenceRequest: null,
+        });
+      }
     } else {
-      return res.status(200).send({ ...attendance[0], missStudent: [] });
+      const attendance = await Attendance.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(req.params.attendanceId),
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "students",
+            foreignField: "_id",
+            as: "checkinStudent",
+          },
+        },
+      ]);
+
+      const classData = await Class.findOne({
+        _id: attendance[0].classId,
+      });
+      console.log(classData);
+
+      const missStudent = classData.students.filter((student: any) => {
+        return !attendance[0].students.some((el: any) =>
+          el._id.equals(student.id)
+        );
+      });
+
+      if (missStudent.length > 0) {
+        const missStudentData = await User.find({
+          _id: { $in: missStudent.map((el: any) => el.id) },
+        });
+        return res
+          .status(200)
+          .send({ ...attendance[0], missStudent: missStudentData });
+      } else {
+        return res.status(200).send({ ...attendance[0], missStudent: [] });
+      }
     }
   } catch (error) {
     console.log(error);
@@ -250,8 +244,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-          ? { day: new Date().getDay, semester: req.query.semester }
-          : {}),
+        ? { day: new Date().getDay, semester: req.query.semester }
+        : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
