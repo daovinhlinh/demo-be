@@ -75,6 +75,7 @@ const getClassDetail = async (req: any, res: Response, next: NextFunction) => {
           schedules: 1,
           semester: 1,
           note: 1,
+          absenceRequests: 1,
           students: {
             $map: {
               input: "$temp_students",
@@ -214,7 +215,6 @@ const getAttendanceDetail = async (req: Request, res: Response) => {
       _id: attendance[0].classId,
     });
     console.log(classData);
-    console.log(attendance[0]);
 
     const missStudent = classData.students.filter((student: any) => {
       return !attendance[0].students.some((el: any) =>
@@ -250,8 +250,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-        ? { day: new Date().getDay, semester: req.query.semester }
-        : {}),
+          ? { day: new Date().getDay, semester: req.query.semester }
+          : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
