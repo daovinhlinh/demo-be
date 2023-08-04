@@ -27,6 +27,12 @@ const attendanceSchema = mongoose.Schema({
       required: true,
     },
   ],
+  invalidCheckIn: [
+    {
+      type: ObjectId,
+      required: true,
+    },
+  ],
   wifi: [
     {
       type: String,
@@ -41,8 +47,8 @@ const attendanceSchema = mongoose.Schema({
   deviceList: {
     type: Array,
     required: true,
-    default: []
-  }
+    default: [],
+  },
 });
 
 const Attendance = mongoose.model("Attendance", attendanceSchema);

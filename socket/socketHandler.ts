@@ -68,7 +68,10 @@ const handleStopAttendance = async (
       // data: attendance
     });
 
-    await pushNotification("Attendance", "Attendance session has ended", classData.classId
+    await pushNotification(
+      "Attendance",
+      "Attendance session has ended",
+      classData.classId
       // {
       //   key: classId,
       //   value: true,
@@ -104,10 +107,10 @@ const socketHandler = (io: Server) => {
 
       if (change.operationType == "update") {
         // async.eachSeries(change.updateDescription.)
-        const updateData = convertArrayDocsToObject(
-          change.updateDescription.updatedFields,
-          "students"
-        );
+        // const updateData = convertArrayDocsToObject(
+        //   change.updateDescription.updatedFields,
+        //   "students"
+        // );
 
         try {
           const students = await User.find({
@@ -127,8 +130,7 @@ const socketHandler = (io: Server) => {
                 id.equals(student.id)
               )
           );
-          console.log('uncheckList', uncheckList);
-
+          console.log("uncheckList", uncheckList);
 
           const uncheckStudents = await User.find({
             _id: {
@@ -139,12 +141,11 @@ const socketHandler = (io: Server) => {
 
           socket.emit(`updateAttendance_${updatedAttendance._id}`, {
             success: true,
-            data:
-            {
+            data: {
               ...updatedAttendance,
               checkinStudent: students,
               uncheckStudent: uncheckStudents,
-            }
+            },
           });
         } catch (e) {
           console.log(e);
@@ -221,8 +222,8 @@ const socketHandler = (io: Server) => {
           }
         );
 
-        await new Attendance(newAttendance).save();
-        console.log('emit start');
+        const newAttendanceData = await new Attendance(newAttendance).save();
+        console.log("newAttendanceData", newAttendanceData);
 
         io.emit(`startAttendance_${classId}`, {
           success: true,
@@ -231,7 +232,7 @@ const socketHandler = (io: Server) => {
 
         io.to(socket.id).emit(`startAttendance`, {
           success: true,
-          data: newAttendance,
+          data: newAttendanceData,
         });
 
         timer = setTimeout(() => {
@@ -248,7 +249,7 @@ const socketHandler = (io: Server) => {
       try {
         const classData = await Class.findOne({
           _id: classId,
-        })
+        });
 
         clearTimeout(timer);
         await Attendance.findOneAndUpdate(
@@ -264,7 +265,11 @@ const socketHandler = (io: Server) => {
           }
         );
 
-        pushNotification('Attendance', `Class ${classData.name} attendance session has been cancel`, classData.classId)
+        pushNotification(
+          "Attendance",
+          `Class ${classData.name} attendance session has been cancel`,
+          classData.classId
+        );
         console.log(`stopAttendance_${classId}`);
 
         io.emit(`stopAttendance_${classId}`, {
@@ -309,6 +314,10 @@ const socketHandler = (io: Server) => {
               message: "Check-in successfully",
             });
           } else {
+            if (!attendance.invalidCheckIn.includes(studentId)) {
+              attendance.invalidCheckIn.push(studentId);
+              await attendance.save();
+            }
             return io.to(socket.id).emit(`checkin`, {
               success: false,
               message: "Check-in failed because of wrong wifi",

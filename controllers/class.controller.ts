@@ -1,6 +1,9 @@
+import { Parser } from "@json2csv/plainjs";
 import dayjs from "dayjs";
 import { NextFunction, Request, Response } from "express";
+import { writeFileSync } from "fs";
 import mongoose from "mongoose";
+import path from "path";
 import { pushNotification } from "../config/notification";
 
 const Class = require("../models/Class");
@@ -244,8 +247,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-          ? { day: new Date().getDay, semester: req.query.semester }
-          : {}),
+        ? { day: new Date().getDay, semester: req.query.semester }
+        : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
@@ -600,6 +603,111 @@ const getNoticeCount = async (req: any, res: Response) => {
   }
 };
 
+const getClassAnalytic = async (req: Request, res: Response) => {
+  const filter = req.query.filter;
+  console.log(filter);
+
+  //Get class attendance list
+  const attendanceData = await Attendance.find({
+    classId: req.params.classId,
+    status: Attendance.STATUS.FINISHED,
+    ...(filter != "" && {
+      startTime: {
+        //This week , convert to timestamp
+        $gte:
+          filter === "week"
+            ? dayjs().startOf("week").toDate().getTime()
+            : filter === "month"
+            ? dayjs().startOf("month").toDate().getTime()
+            : filter === "today"
+            ? dayjs().startOf("day").toDate().getTime()
+            : null,
+      },
+    }),
+  }).lean();
+  console.log({ attendanceData });
+
+  const analytic = {
+    total: 0,
+    valid: 0,
+    invalid: 0,
+    missed: 0,
+    approveAbsent: 0,
+    rejectAbsent: 0,
+  };
+
+  //Count total length in student field and invalidCheckIn field for each attendance and return in object
+  attendanceData.forEach((attendance: any) => {
+    analytic.valid += attendance.students.length;
+
+    if (attendance.invalidCheckIn) {
+      analytic.invalid += attendance.invalidCheckIn.length;
+    }
+  });
+
+  //Get class data
+  const classData = await Class.findOne({
+    _id: req.params.classId,
+  }).lean();
+
+  //Get absent request data
+  const absenceRequestData = await AbsenceRequest.find({
+    classId: req.params.classId,
+    ...(filter != "" && {
+      date: {
+        $gte:
+          filter === "week"
+            ? dayjs().startOf("week").toDate()
+            : filter === "month"
+            ? dayjs().startOf("month").toDate()
+            : filter === "today"
+            ? dayjs().startOf("day").toDate()
+            : null,
+      },
+    }),
+  }).lean();
+
+  absenceRequestData.forEach((request: any) => {
+    if (request.status === AbsenceRequest.STATUS.APPROVED) {
+      analytic.approveAbsent += 1;
+    } else if (request.status === AbsenceRequest.STATUS.REJECTED) {
+      analytic.rejectAbsent += 1;
+    }
+  });
+
+  analytic.total = classData.students.length * attendanceData.length;
+
+  analytic.missed =
+    classData.students.length * attendanceData.length - analytic.valid;
+
+  return res.status(200).send(analytic);
+};
+
+const downloadClassAnalytic = async (req: Request, res: Response) => {
+  const parser = new Parser();
+  const csv = parser.parse({
+    hello: 2,
+    a: 3,
+  });
+  console.log("download");
+
+  writeFileSync(
+    `${path.join(__dirname, "../public/uploads/csv")}/test.csv`,
+    csv
+  );
+
+  res.download(
+    `${path.join(__dirname, "../public/uploads/csv")}/test.csv`,
+    "test.csv",
+    (err) => console.log(err)
+  );
+
+  // const input = createReadStream(
+  //   `${path.join(__dirname, "../public/uploads/csv")}/test.csv`,
+  //   { encoding: "utf8" }
+  // ));
+};
+
 module.exports = {
   getClassList,
   getClassDetail,
@@ -612,4 +720,6 @@ module.exports = {
   getAbsenceRequest,
   updateAbsenceRequest,
   getNoticeCount,
+  getClassAnalytic,
+  downloadClassAnalytic,
 };

@@ -137,16 +137,18 @@ router.post(
         });
       }
 
-      await Class.updateOne({
-        _id: req.body.id,
-      }, {
-        $set: req.body.data
-      })
+      await Class.updateOne(
+        {
+          _id: req.body.id,
+        },
+        {
+          $set: req.body.data,
+        }
+      );
 
       return res.status(200).send({
         message: "Update class successfully",
       });
-
     } catch (err) {
       return res.status(401).send({
         message: "Cannot update class",
@@ -188,6 +190,13 @@ router.get(
   "/attendance/:attendanceId",
   auth,
   classController.getAttendanceDetail
+);
+
+router.get("/analytic/:classId", auth, classController.getClassAnalytic);
+
+router.get(
+  "/analytic/download/:classId",
+  classController.downloadClassAnalytic
 );
 
 router.get("/search", auth, classController.searchClass);
