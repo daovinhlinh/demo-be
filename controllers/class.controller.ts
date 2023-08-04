@@ -18,7 +18,7 @@ const getClassList = async (req: any, res: Response) => {
       return res.status(200).send(classes);
     } else if (req.user.role === User.ROLES.LECTURER) {
       const classes = await Class.find({
-        "lecturer.email": req.user.email,
+        lecturer: req.user._id,
       });
       res.status(200).send(classes);
     } else {
@@ -244,8 +244,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-        ? { day: new Date().getDay, semester: req.query.semester }
-        : {}),
+          ? { day: new Date().getDay, semester: req.query.semester }
+          : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
