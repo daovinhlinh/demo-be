@@ -1,8 +1,10 @@
 import { Response } from "express";
 import { ObjectId } from "mongodb";
 import mongoose from "mongoose";
+import { pushNotification } from "../config/notification";
 
 const Announcement = require("../models/Announcement");
+const Class = require("../models/Class");
 
 const getAnnouncementList = async (req: any, res: Response) => {
   try {
@@ -80,8 +82,31 @@ const searchAnnouncement = async (req: any, res: Response) => {
 
 const addAnnouncement = async (req: any, res: Response) => {
   try {
-    const newAnnouncement = new Announcement(req.body);
+    const classData = await Class.findOne({
+      _id: req.body.classId
+    });
+
+    if (!classData) {
+      return res.status(401).send({
+        success: false,
+        message: "Cannot find class",
+      });
+    }
+
+    const newAnnouncement = new Announcement({ ...req.body, createdBy: req.user._id });
     await newAnnouncement.save();
+
+    pushNotification(
+      classData.name,
+      `${req.body.title}\n${req.body.content}`,
+      classData.classId,
+      {
+        screen: "AbsenceList",
+        data: {
+          id: classData._id,
+        },
+      }
+    );
     return res.status(201).send({ success: true, newAnnouncement });
   } catch (error) {
     return res.status(401).send({ error: "Cannot add announcement" });

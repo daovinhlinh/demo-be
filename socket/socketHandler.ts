@@ -128,6 +128,8 @@ const socketHandler = (io: Server) => {
             (student: any) =>
               !updatedAttendance.students.some((id: any) =>
                 id.equals(student.id)
+              ) && !updatedAttendance.invalidCheckIn.some((id: any) =>
+                id.equals(student.id)
               )
           );
           console.log("uncheckList", uncheckList);
@@ -315,7 +317,7 @@ const socketHandler = (io: Server) => {
             });
           } else {
             if (!attendance.invalidCheckIn.includes(studentId)) {
-              attendance.invalidCheckIn.push(studentId);
+              attendance.invalidCheckIn.push(new mongoose.Types.ObjectId(studentId));
               await attendance.save();
             }
             return io.to(socket.id).emit(`checkin`, {

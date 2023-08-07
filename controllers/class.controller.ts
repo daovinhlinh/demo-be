@@ -247,8 +247,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-        ? { day: new Date().getDay, semester: req.query.semester }
-        : {}),
+          ? { day: new Date().getDay, semester: req.query.semester }
+          : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
@@ -513,10 +513,18 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
               $gte: dayjs(request.date).startOf("day").toDate(),
               $lte: dayjs(request.date).endOf("day").toDate(),
             },
+            //check if student not in students array
+            students: {
+              $nin: [request.studentId],
+            }
           },
           {
             $push: {
               students: request.studentId,
+            },
+            //remove studentId if in invalidStudent array 
+            $pull: {
+              invalidCheckIn: request.studentId,
             },
           }
         );
@@ -618,10 +626,10 @@ const getClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate().getTime()
             : filter === "month"
-            ? dayjs().startOf("month").toDate().getTime()
-            : filter === "today"
-            ? dayjs().startOf("day").toDate().getTime()
-            : null,
+              ? dayjs().startOf("month").toDate().getTime()
+              : filter === "today"
+                ? dayjs().startOf("day").toDate().getTime()
+                : null,
       },
     }),
   }).lean();
@@ -659,10 +667,10 @@ const getClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate()
             : filter === "month"
-            ? dayjs().startOf("month").toDate()
-            : filter === "today"
-            ? dayjs().startOf("day").toDate()
-            : null,
+              ? dayjs().startOf("month").toDate()
+              : filter === "today"
+                ? dayjs().startOf("day").toDate()
+                : null,
       },
     }),
   }).lean();
@@ -684,11 +692,136 @@ const getClassAnalytic = async (req: Request, res: Response) => {
 };
 
 const downloadClassAnalytic = async (req: Request, res: Response) => {
+  const filter = req.query.filter;
+  console.log(filter);
+
+  const data: any = [];
+
+  //Get class data
+  const classData = await Class.findOne({
+    _id: req.params.classId,
+  }).lean();
+
+  //Get absent request data
+  const absenceRequestData = await AbsenceRequest.find({
+    classId: req.params.classId,
+    //check statuus not pending
+    status: {
+      $ne: AbsenceRequest.STATUS.PENDING,
+    },
+    ...(filter != "" && {
+      date: {
+        $gte:
+          filter === "week"
+            ? dayjs().startOf("week").toDate()
+            : filter === "month"
+              ? dayjs().startOf("month").toDate()
+              : filter === "today"
+                ? dayjs().startOf("day").toDate()
+                : null,
+      },
+    }),
+  }).lean();
+
+  //Get class attendance list
+  const attendanceData = await Attendance.find({
+    classId: req.params.classId,
+    status: Attendance.STATUS.FINISHED,
+    ...(filter != "" && {
+      startTime: {
+        //This week , convert to timestamp
+        $gte:
+          filter === "week"
+            ? dayjs().startOf("week").toDate().getTime()
+            : filter === "month"
+              ? dayjs().startOf("month").toDate().getTime()
+              : filter === "today"
+                ? dayjs().startOf("day").toDate().getTime()
+                : null,
+      },
+    }),
+  }).lean();
+
+  for (const student of classData.students) {
+    const rejectAbsent = absenceRequestData.filter(
+      (request: any) =>
+        request.studentId.equals(student.id) &&
+        request.status === AbsenceRequest.STATUS.REJECTED
+    ).length;
+
+    const approveAbsent = absenceRequestData.filter(
+      (request: any) =>
+        request.studentId.equals(student.id) &&
+        request.status === AbsenceRequest.STATUS.APPROVED
+    ).length;
+
+    const invalidCheckIn = await Attendance.find({
+      classId: req.params.classId,
+      status: Attendance.STATUS.FINISHED,
+      invalidCheckIn: {
+        $elemMatch: {
+          studentId: student._id,
+        },
+      },
+      ...(filter != "" && {
+        startTime: {
+          $gte:
+            filter === "week"
+              ? dayjs().startOf("week").toDate().getTime()
+              : filter === "month"
+                ? dayjs().startOf("month").toDate().getTime()
+                : filter === "today"
+                  ? dayjs().startOf("day").toDate().getTime()
+                  : null,
+        },
+      }),
+    }).countDocuments();
+
+    let validCheckIn = 0;
+
+    for (const attendance of attendanceData) {
+      for (const studentId of attendance.students) {
+        if (studentId.equals(student.id)) {
+          validCheckIn += 1;
+        }
+      }
+    }
+
+    const studentData = {
+      studentId: student.id,
+      "Valid Check In": validCheckIn,
+      "Invalid Check In": invalidCheckIn,
+      "Missed Check In": attendanceData.length - validCheckIn,
+      "Rejected Absent": rejectAbsent,
+      "Approved Absent": approveAbsent,
+    };
+
+    console.log(studentData);
+    data.push(studentData);
+  }
+  console.log(data);
+
+  //Get class attendance list
+  // const attendanceData = await Attendance.find({
+  //   classId: req.params.classId,
+  //   status: Attendance.STATUS.FINISHED,
+  //   ...(filter != "" && {
+  //     startTime: {
+  //       //This week , convert to timestamp
+  //       $gte:
+  //         filter === "week"
+  //           ? dayjs().startOf("week").toDate().getTime()
+  //           : filter === "month"
+  //             ? dayjs().startOf("month").toDate().getTime()
+  //             : filter === "today"
+  //               ? dayjs().startOf("day").toDate().getTime()
+  //               : null,
+  //     },
+  //   }),
+  // }).lean();
+
   const parser = new Parser();
-  const csv = parser.parse({
-    hello: 2,
-    a: 3,
-  });
+  const csv = parser.parse(data);
   console.log("download");
 
   writeFileSync(
