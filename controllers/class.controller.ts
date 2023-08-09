@@ -191,43 +191,50 @@ const getAttendanceDetail = async (req: any, res: Response) => {
         });
       }
     } else {
-      const attendance = await Attendance.aggregate([
-        {
-          $match: {
-            _id: new mongoose.Types.ObjectId(req.params.attendanceId),
-          },
-        },
-        {
-          $lookup: {
-            from: "users",
-            localField: "students",
-            foreignField: "_id",
-            as: "checkinStudent",
-          },
-        },
-      ]);
+      // const attendance = await Attendance.aggregate([
+      //   {
+      //     $match: {
+      //       _id: new mongoose.Types.ObjectId(req.params.attendanceId),
+      //     },
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "users",
+      //       localField: "students",
+      //       foreignField: "_id",
+      //       as: "checkinStudent",
+      //     },
+      //   },
+      // ]);
 
-      const classData = await Class.findOne({
-        _id: attendance[0].classId,
-      });
-      console.log(classData);
+      const attendance = await Attendance.findOne({
+        _id: new mongoose.Types.ObjectId(req.params.attendanceId),
+      })
+      console.log(attendance);
 
-      const missStudent = classData.students.filter((student: any) => {
-        return !attendance[0].students.some((el: any) =>
-          el._id.equals(student.id)
-        );
-      });
+      // const classData = await Class.findOne({
+      //   _id: attendance.classId,
+      // });
+      // console.log(classData);
 
-      if (missStudent.length > 0) {
-        const missStudentData = await User.find({
-          _id: { $in: missStudent.map((el: any) => el.id) },
-        });
-        return res
-          .status(200)
-          .send({ ...attendance[0], missStudent: missStudentData });
-      } else {
-        return res.status(200).send({ ...attendance[0], missStudent: [] });
-      }
+      // const missStudent = classData.students.filter((student: any) => {
+      //   return !attendance[0].students.some((el: any) =>
+      //     el._id.equals(student.id)
+      //   );
+      // });
+
+      return res.status(200).send(attendance);
+
+      // if (missStudent.length > 0) {
+      //   const missStudentData = await User.find({
+      //     _id: { $in: missStudent.map((el: any) => el.id) },
+      //   });
+      //   return res
+      //     .status(200)
+      //     .send({ ...attendance[0], missStudent: missStudentData });
+      // } else {
+      //   return res.status(200).send({ ...attendance[0], missStudent: [] });
+      // }
     }
   } catch (error) {
     console.log(error);
