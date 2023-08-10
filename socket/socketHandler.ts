@@ -99,10 +99,20 @@ const socketHandler = (io: Server) => {
       //change data is array of ids
       //convert ids to list users data
       //send to client
+      // const attendanceList = await Attendance.find({
 
       const updatedAttendance = await Attendance.findOne({
         _id: change.documentKey._id,
       }).lean();
+
+      const attendanceList = await Attendance.find({
+        classId: updatedAttendance.classId,
+      }).lean();
+
+      const classData = await Class.findOne({
+        _id: updatedAttendance.classId,
+      }).lean();
+
       console.log("updatedAttendance", updatedAttendance);
 
       if (change.operationType == "update") {
@@ -113,43 +123,58 @@ const socketHandler = (io: Server) => {
         // );
 
         try {
-          const students = await User.find({
-            _id: {
-              $in: updatedAttendance.students,
-            },
-            role: User.ROLES.USER,
-          });
+          // const students = await User.find({
+          //   _id: {
+          //     $in: updatedAttendance.students,
+          //   },
+          //   role: User.ROLES.USER,
+          // });
 
-          const classData = await Class.findOne({
-            _id: updatedAttendance.classId,
-          });
+          // const classData = await Class.findOne({
+          //   _id: updatedAttendance.classId,
+          // });
 
-          const uncheckList = classData.students.filter(
-            (student: any) =>
-              !updatedAttendance.students.some((id: any) =>
-                id.equals(student.id)
-              ) && !updatedAttendance.invalidCheckIn.some((id: any) =>
-                id.equals(student.id)
-              )
-          );
-          console.log("uncheckList", uncheckList);
+          // const uncheckList = classData.students.filter(
+          //   (student: any) =>
+          //     !updatedAttendance.students.some((id: any) =>
+          //       id.equals(student.id)
+          //     ) && !updatedAttendance.invalidCheckIn.some((id: any) =>
+          //       id.equals(student.id)
+          //     )
+          // );
+          // console.log("uncheckList", uncheckList);
 
-          const uncheckStudents = await User.find({
-            _id: {
-              $in: uncheckList.map((item: any) => item.id),
-            },
-            role: User.ROLES.USER,
-          });
+          // const uncheckStudents = await User.find({
+          //   _id: {
+          //     $in: uncheckList.map((item: any) => item.id),
+          //   },
+          //   role: User.ROLES.USER,
+          // });
 
           socket.emit(`updateAttendance_${updatedAttendance._id}`, {
             success: true,
-            data: {
-              ...updatedAttendance,
-              checkinStudent: students,
-              uncheckStudent: uncheckStudents,
-            },
+            data: updatedAttendance,
+          });
+
+          socket.emit(`updateHistory_${updatedAttendance.classId}`, {
+            success: true,
+            data: attendanceList,
+          });
+          console.log(`updateAnalytics_${updatedAttendance.classId}`);
+          socket.emit(`updateAnalytics_${updatedAttendance.classId}`, {
+            success: true,
+            data: classData.students,
           });
         } catch (e) {
+          socket.emit(`updateAttendance_${updatedAttendance._id}`, {
+            success: false,
+            data: e,
+          });
+
+          socket.emit(`updateHistory_${updatedAttendance.classId}`, {
+            success: true,
+            data: e,
+          });
           console.log(e);
         }
       }
@@ -317,7 +342,9 @@ const socketHandler = (io: Server) => {
             });
           } else {
             if (!attendance.invalidCheckIn.includes(studentId)) {
-              attendance.invalidCheckIn.push(new mongoose.Types.ObjectId(studentId));
+              attendance.invalidCheckIn.push(
+                new mongoose.Types.ObjectId(studentId)
+              );
               await attendance.save();
             }
             return io.to(socket.id).emit(`checkin`, {

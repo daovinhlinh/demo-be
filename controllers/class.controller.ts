@@ -209,7 +209,7 @@ const getAttendanceDetail = async (req: any, res: Response) => {
 
       const attendance = await Attendance.findOne({
         _id: new mongoose.Types.ObjectId(req.params.attendanceId),
-      })
+      });
       console.log(attendance);
 
       // const classData = await Class.findOne({
@@ -254,8 +254,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-          ? { day: new Date().getDay, semester: req.query.semester }
-          : {}),
+        ? { day: new Date().getDay, semester: req.query.semester }
+        : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
@@ -293,6 +293,10 @@ const updateAttendance = async (req: Request, res: Response) => {
         classData.save();
         attendance.students.push(
           new mongoose.Types.ObjectId(req.body.studentId)
+        );
+
+        attendance.invalidCheckIn = attendance.invalidCheckIn.filter(
+          (el: any) => !el.equals(req.body.studentId)
         );
       } else if (req.body.status === 2) {
         //Update checked in to miss
@@ -523,13 +527,13 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
             //check if student not in students array
             students: {
               $nin: [request.studentId],
-            }
+            },
           },
           {
             $push: {
               students: request.studentId,
             },
-            //remove studentId if in invalidStudent array 
+            //remove studentId if in invalidStudent array
             $pull: {
               invalidCheckIn: request.studentId,
             },
@@ -633,10 +637,10 @@ const getClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate().getTime()
             : filter === "month"
-              ? dayjs().startOf("month").toDate().getTime()
-              : filter === "today"
-                ? dayjs().startOf("day").toDate().getTime()
-                : null,
+            ? dayjs().startOf("month").toDate().getTime()
+            : filter === "today"
+            ? dayjs().startOf("day").toDate().getTime()
+            : null,
       },
     }),
   }).lean();
@@ -674,10 +678,10 @@ const getClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate()
             : filter === "month"
-              ? dayjs().startOf("month").toDate()
-              : filter === "today"
-                ? dayjs().startOf("day").toDate()
-                : null,
+            ? dayjs().startOf("month").toDate()
+            : filter === "today"
+            ? dayjs().startOf("day").toDate()
+            : null,
       },
     }),
   }).lean();
@@ -722,10 +726,10 @@ const downloadClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate()
             : filter === "month"
-              ? dayjs().startOf("month").toDate()
-              : filter === "today"
-                ? dayjs().startOf("day").toDate()
-                : null,
+            ? dayjs().startOf("month").toDate()
+            : filter === "today"
+            ? dayjs().startOf("day").toDate()
+            : null,
       },
     }),
   }).lean();
@@ -741,10 +745,10 @@ const downloadClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate().getTime()
             : filter === "month"
-              ? dayjs().startOf("month").toDate().getTime()
-              : filter === "today"
-                ? dayjs().startOf("day").toDate().getTime()
-                : null,
+            ? dayjs().startOf("month").toDate().getTime()
+            : filter === "today"
+            ? dayjs().startOf("day").toDate().getTime()
+            : null,
       },
     }),
   }).lean();
@@ -776,10 +780,10 @@ const downloadClassAnalytic = async (req: Request, res: Response) => {
             filter === "week"
               ? dayjs().startOf("week").toDate().getTime()
               : filter === "month"
-                ? dayjs().startOf("month").toDate().getTime()
-                : filter === "today"
-                  ? dayjs().startOf("day").toDate().getTime()
-                  : null,
+              ? dayjs().startOf("month").toDate().getTime()
+              : filter === "today"
+              ? dayjs().startOf("day").toDate().getTime()
+              : null,
         },
       }),
     }).countDocuments();
