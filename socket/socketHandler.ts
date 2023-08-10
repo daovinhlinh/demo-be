@@ -88,6 +88,7 @@ const handleStopAttendance = async (
 
 const socketHandler = (io: Server) => {
   const changeStream = Attendance.watch();
+  const changeClassStream = Class.watch();
 
   io.on("connection", (socket: Socket) => {
     console.log("a user connected");
@@ -161,10 +162,7 @@ const socketHandler = (io: Server) => {
             data: attendanceList,
           });
           console.log(`updateAnalytics_${updatedAttendance.classId}`);
-          socket.emit(`updateAnalytics_${updatedAttendance.classId}`, {
-            success: true,
-            data: classData.students,
-          });
+
         } catch (e) {
           socket.emit(`updateAttendance_${updatedAttendance._id}`, {
             success: false,
@@ -179,6 +177,21 @@ const socketHandler = (io: Server) => {
         }
       }
     });
+
+    changeClassStream.on("change", async (change: any) => {
+      console.log("change", change);
+      //handle update data here
+      const updatedClass = await Class.findOne({
+        _id: change.documentKey._id,
+      }).lean();
+
+      if (updatedClass) {
+        socket.emit(`updateClass_${change.documentKey._id}`, {
+          success: true,
+          data: updatedClass.students,
+        });
+      }
+    })
 
     socket.on("startAttendance", async ({ classId, wifi, time }) => {
       try {

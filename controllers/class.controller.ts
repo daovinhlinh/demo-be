@@ -254,8 +254,8 @@ const searchClass = async (req: Request, res: Response) => {
       ...(req.query.filter && req.query.filter === "This semester"
         ? { semester: req.query.semester }
         : req.query.filter === "Today"
-        ? { day: new Date().getDay, semester: req.query.semester }
-        : {}),
+          ? { day: new Date().getDay, semester: req.query.semester }
+          : {}),
     });
     return res.status(200).send(classes);
   } catch (error) {
@@ -564,11 +564,10 @@ const updateAbsenceRequest = async (req: any, res: Response) => {
           request.studentId
         );
       } else if (req.body.status === "DELETE") {
-        const res = await AbsenceRequest.deleteOne({
+        await AbsenceRequest.deleteOne({
           _id: req.body.requestId,
           studentId: req.user._id,
         });
-        console.log(res);
 
         return res.status(200).send({
           success: true,
@@ -637,10 +636,10 @@ const getClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate().getTime()
             : filter === "month"
-            ? dayjs().startOf("month").toDate().getTime()
-            : filter === "today"
-            ? dayjs().startOf("day").toDate().getTime()
-            : null,
+              ? dayjs().startOf("month").toDate().getTime()
+              : filter === "today"
+                ? dayjs().startOf("day").toDate().getTime()
+                : null,
       },
     }),
   }).lean();
@@ -678,10 +677,10 @@ const getClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate()
             : filter === "month"
-            ? dayjs().startOf("month").toDate()
-            : filter === "today"
-            ? dayjs().startOf("day").toDate()
-            : null,
+              ? dayjs().startOf("month").toDate()
+              : filter === "today"
+                ? dayjs().startOf("day").toDate()
+                : null,
       },
     }),
   }).lean();
@@ -726,10 +725,10 @@ const downloadClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate()
             : filter === "month"
-            ? dayjs().startOf("month").toDate()
-            : filter === "today"
-            ? dayjs().startOf("day").toDate()
-            : null,
+              ? dayjs().startOf("month").toDate()
+              : filter === "today"
+                ? dayjs().startOf("day").toDate()
+                : null,
       },
     }),
   }).lean();
@@ -745,10 +744,10 @@ const downloadClassAnalytic = async (req: Request, res: Response) => {
           filter === "week"
             ? dayjs().startOf("week").toDate().getTime()
             : filter === "month"
-            ? dayjs().startOf("month").toDate().getTime()
-            : filter === "today"
-            ? dayjs().startOf("day").toDate().getTime()
-            : null,
+              ? dayjs().startOf("month").toDate().getTime()
+              : filter === "today"
+                ? dayjs().startOf("day").toDate().getTime()
+                : null,
       },
     }),
   }).lean();
@@ -780,10 +779,10 @@ const downloadClassAnalytic = async (req: Request, res: Response) => {
             filter === "week"
               ? dayjs().startOf("week").toDate().getTime()
               : filter === "month"
-              ? dayjs().startOf("month").toDate().getTime()
-              : filter === "today"
-              ? dayjs().startOf("day").toDate().getTime()
-              : null,
+                ? dayjs().startOf("month").toDate().getTime()
+                : filter === "today"
+                  ? dayjs().startOf("day").toDate().getTime()
+                  : null,
         },
       }),
     }).countDocuments();
